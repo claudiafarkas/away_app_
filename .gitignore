@@ -1,3 +1,11 @@
+# Flutter
+
+# Environment files
+*.env
+!*.env.example
+
+# Backend
+
 # Miscellaneous
 *.class
 *.log
@@ -43,3 +51,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Builds and Generated Artifacts
+/build/
+/.flutter-plugins
+/.flutter-plugins-dependencies
+/.packages
+ 
+# IDE and IOs Settings
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# DEpendency Caches
+/android/.gradle/
+/ios/Pods/
+/ios/flutter/flutter.podspec.json
+

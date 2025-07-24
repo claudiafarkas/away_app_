@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+			<string>com.googleusercontent.apps.975056194033-fou136rr4na0taljvb8pe2klkcuae85g</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to show nearby places.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs your location for full functionality.</string>
 </dict>
 </plist>
