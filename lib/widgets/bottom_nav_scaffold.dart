@@ -34,22 +34,65 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF062D40),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.file_upload),
-            label: 'Import',
+      backgroundColor: Colors.white,
+      extendBody: true,
+      body: Stack(
+        children: [
+          _pages[_currentIndex],
+          Positioned(
+            left: 56,
+            right: 56,
+            bottom: 24,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.home),
+                    iconSize: 20,
+                    color: _currentIndex == 0 ? Color(0xFF062D40) : Colors.grey,
+                    onPressed: () => setState(() => _currentIndex = 0),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.file_upload),
+                    iconSize: 20,
+                    color: _currentIndex == 1 ? Color(0xFF062D40) : Colors.grey,
+                    onPressed: () => setState(() => _currentIndex = 1),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.map),
+                    iconSize: 20,
+                    color: _currentIndex == 2 ? Color(0xFF062D40) : Colors.grey,
+                    onPressed: () => setState(() => _currentIndex = 2),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.money),
+                    iconSize: 20,
+                    color: _currentIndex == 3 ? Color(0xFF062D40) : Colors.grey,
+                    onPressed: () => setState(() => _currentIndex = 3),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.person),
+                    iconSize: 20,
+                    color: _currentIndex == 4 ? Color(0xFF062D40) : Colors.grey,
+                    onPressed: () => setState(() => _currentIndex = 4),
+                  ),
+                ],
+              ),
+            ),
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
-          BottomNavigationBarItem(icon: Icon(Icons.money), label: 'Deals'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );

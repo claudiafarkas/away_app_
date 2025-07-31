@@ -19,123 +19,149 @@ class ProfileScreen extends StatelessWidget {
       {'title': 'Notifications', 'icon': Icons.notifications},
       {'title': 'Privacy & Data', 'icon': Icons.lock_outline},
       {'title': 'Login & Security', 'icon': Icons.security},
-      {'title': 'Logout', 'icon': Icons.logout},
     ];
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            backgroundColor: accentColor,
-            expandedHeight: 280,
-            pinned: true,
-            stretch: true,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [
-                StretchMode.zoomBackground,
-                StretchMode.blurBackground,
-                StretchMode.fadeTitle,
-              ],
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(color: accentColor),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              image: DecorationImage(
-                                image:
-                                    photoUrl != null
-                                        ? NetworkImage(photoUrl!)
-                                        : const AssetImage(
-                                              'assets/avatar_placeholder.png',
-                                            )
-                                            as ImageProvider,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            name ?? 'Guest',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.star,
-                                color: Colors.yellowAccent,
-                                size: 20,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '120 Points',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        children: [
+          const SizedBox(height: 62),
+          const Text(
+            'Hey Test!', // ToDO - Replace with dynamic user name
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+
+          _buildListTileWithSubtitle(
+            'Personal Info',
+            'Update your name, email, or profile photo',
+            Icons.person,
+            accentColor,
+          ),
+          _buildListTileWithSubtitle(
+            'Account Management',
+            'Manage your preferences and account details',
+            Icons.manage_accounts,
+            accentColor,
+          ),
+          _buildListTileWithSubtitle(
+            'Notifications',
+            'Control your notification settings',
+            Icons.notifications,
+            accentColor,
+          ),
+          _buildListTileWithSubtitle(
+            'Privacy & Data',
+            'Manage what you share with the app',
+            Icons.lock_outline,
+            accentColor,
+          ),
+          _buildListTileWithSubtitle(
+            'Login & Security',
+            'Update password or secure your account',
+            Icons.security,
+            accentColor,
+          ),
+
+          const SizedBox(height: 32),
+          const Divider(height: 32),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'HELP & MORE',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-
-          // sliverList for settings items
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final item = settings[index];
-              return Column(
-                children: [
-                  ListTile(
-                    leading: Icon(item['icon'] as IconData, color: accentColor),
-                    title: Text(
-                      item['title'] as String,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.grey,
-                    ),
-                    onTap: () {
-                      // TODO: Navigate to each setting’s detail page
-                    },
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                ],
-              );
-            }, childCount: settings.length),
+          _buildListTile('Help/Legal', Icons.help_outline, accentColor),
+          _buildListTile('Accessibility', Icons.accessibility, accentColor),
+          _buildListTile('Ad Preferences', Icons.tune, accentColor),
+          _buildListTile(
+            'Give Us Your Feedback',
+            Icons.feedback_outlined,
+            accentColor,
           ),
+          const SizedBox(height: 32),
+          TextButton(
+            onPressed: () {
+              // TODO: Add sign-out functionality here
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: accentColor,
+              side: const BorderSide(color: accentColor),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Sign Out',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _buildListTileWithSubtitle(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color iconColor,
+  ) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 0,
+            vertical: 8,
+          ),
+          leading: Icon(icon, color: iconColor),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+          onTap: () {
+            // TODO: Implement navigation logic
+          },
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+
+  Widget _buildListTile(String title, IconData icon, Color iconColor) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+      leading: Icon(icon, color: iconColor, size: 20),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: Colors.black87,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: () {
+        // TODO: Implement navigation logic
+      },
     );
   }
 }

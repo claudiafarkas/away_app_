@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import instaloader
 import spacy
@@ -9,6 +9,8 @@ import re
 from dotenv import load_dotenv
 
 
+router = APIRouter()
+
 # load backend/.env
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))            # calls the .env in the backend folder only
 
@@ -16,7 +18,6 @@ GOOGLE_API_KEY = os.getenv("BACKEND_GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise RuntimeError("Missing BACKEND_GOOGLE_API_KEY in .env")
 
-app = FastAPI()
 nlp = spacy.load("en_core_web_trf")
 L = instaloader.Instaloader()
 
@@ -160,7 +161,7 @@ def remove_duplicate_get_location_geocodes(locations: list[dict]) -> list[dict]:
 # get_location_geocodes = remove_duplicate_get_location_geocodes(get_location_geocodes)
 
 
-@app.post("/parse_instagram_post")
+@router.post("/parse_instagram_post")
 def parse_instagram_post(req: ParseRequest):
     """
     Endpoint to parse Instagram post data.
@@ -185,4 +186,3 @@ def parse_instagram_post(req: ParseRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
-

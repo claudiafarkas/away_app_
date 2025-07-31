@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:away/services/import_service.dart';
 import 'package:away/views/map/map_screen.dart';
+import 'package:away/views/import/manual_import_screen.dart';
 
 class ImportSuccessScreen extends StatefulWidget {
   final String caption;
@@ -26,7 +27,11 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
   void initState() {
     super.initState();
     // Initialize selection state for each location
-    _selectedLocations = List<bool>.filled(widget.locations.length, false);
+    _selectedLocations = List<bool>.filled(
+      widget.locations.length,
+      false,
+      growable: true,
+    );
   }
 
   @override
@@ -56,7 +61,9 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                   itemCount: widget.locations.length,
                   itemBuilder: (context, index) {
                     final loc = widget.locations[index];
-                    final lat = loc['latitude'], lng = loc['longitude'];
+                    // final lat = loc['latitude'], lng = loc['longitude'];
+                    final lat = loc['latitude'] ?? loc['lat'];
+                    final lng = loc['longitude'] ?? loc['lng'];
                     return Row(
                       children: [
                         // Checkbox on the left
@@ -91,63 +98,91 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                   },
                 ),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  print(
-                    "🧪 Button pressed. Current selected states: $_selectedLocations",
-                  );
-                  if (!_selectedLocations.contains(true)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Please select at least one location.'),
-                      ),
-                    );
-                    return;
-                  }
-                  // Filter selected locations into List<Map<String, dynamic>>
-                  final selectedLocations =
-                      widget.locations
-                          .asMap()
-                          .entries
-                          .where((entry) => _selectedLocations[entry.key])
-                          .map((entry) {
-                            final loc = entry.value;
-                            final lat = loc['latitude'];
-                            final lng = loc['longitude'];
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      print(
+                        "🧪 Button pressed. Current selected states: $_selectedLocations",
+                      );
+                      if (!_selectedLocations.contains(true)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Please select at least one location.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      // Filter selected locations into List<Map<String, dynamic>>
+                      final selectedLocations =
+                          widget.locations
+                              .asMap()
+                              .entries
+                              .where((entry) => _selectedLocations[entry.key])
+                              .map((entry) {
+                                final loc = entry.value;
+                                final lat = loc['latitude'] ?? loc['lat'];
+                                final lng = loc['longitude'] ?? loc['lng'];
 
-                            if (lat == null || lng == null) {
-                              print(
-                                "⚠️ Skipping location with null coordinates: ${loc['name']}",
-                              );
-                              return null;
-                            }
+                                if (lat == null || lng == null) {
+                                  print(
+                                    "⚠️ Skipping location with null coordinates: ${loc['name']}",
+                                  );
+                                  return null;
+                                }
 
-                            return {
-                              'name': loc['name'] as String? ?? 'Unknown',
-                              'address': loc['address'] as String? ?? '',
-                              'lat':
-                                  lat is double ? lat : (lat as num).toDouble(),
-                              'lng':
-                                  lng is double ? lng : (lng as num).toDouble(),
-                            };
-                          })
-                          .whereType<
-                            Map<String, dynamic>
-                          >() // filters out nulls
-                          .toList();
-                  print(
-                    "🗺 Navigating to map with locations: $selectedLocations",
-                  );
-                  // Add these locations to the singleton service
-                  ImportService.instance.addLocations(selectedLocations);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MapScreen(showDoneButton: true),
-                    ),
-                  );
-                },
-                child: Text("View Selected on Map"),
+                                return {
+                                  'name': loc['name'] ?? 'Unknown',
+                                  'address': loc['address'] ?? '',
+                                  'lat':
+                                      lat is double
+                                          ? lat
+                                          : (lat as num).toDouble(),
+                                  'lng':
+                                      lng is double
+                                          ? lng
+                                          : (lng as num).toDouble(),
+                                };
+                              })
+                              .whereType<
+                                Map<String, dynamic>
+                              >() // filters out nulls
+                              .toList();
+                      print(
+                        "🗺 Navigating to map with locations: $selectedLocations",
+                      );
+                      // Add these locations to the singleton service
+                      ImportService.instance.addLocations(selectedLocations);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MapScreen(showDoneButton: true),
+                        ),
+                      );
+                    },
+                    child: Text("View Selected on Map"),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: Icon(Icons.edit_location_alt),
+                    label: Text("Import Manually"),
+                    onPressed: () async {
+                      final result = await Navigator.pushNamed(
+                        context,
+                        '/manual_import_screen',
+                      );
+                      if (result != null && mounted) {
+                        setState(() {
+                          widget.locations.add(result as Map<String, dynamic>);
+                          _selectedLocations.add(false);
+                        });
+                      }
+                    },
+                  ),
+                ],
               ),
             ],
           ),

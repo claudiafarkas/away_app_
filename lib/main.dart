@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:away/views/welcome_load/welcome_load_screen.dart';
-import 'package:away/views/home/imported_tab_screen.dart';
+import 'package:away/views/imported/imported_screen.dart';
 import 'package:away/views/map/map_screen.dart';
 import 'package:away/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:away/views/import/manual_import_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +39,9 @@ class MyApp extends StatelessWidget {
       ),
       home: const WelcomeLoad(),
       routes: {
-        '/imported_tab_screen': (context) => MyImportsTabScreen(),
+        '/imported_screen': (context) => MyImportsScreen(),
         '/map': (context) => const MapScreen(),
+        '/manual_import_screen': (context) => const ManualImportScreen(),
       },
     );
   }
