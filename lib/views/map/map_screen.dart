@@ -270,32 +270,11 @@ class _MapScreenState extends State<MapScreen> {
     }
     print("📦 Returning Scaffold with map");
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Map'),
-        elevation: 2,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        actions:
-            widget.showDoneButton
-                ? [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // close MapScreen
-                      Navigator.pop(context); // close ImportSuccessScreen
-                    },
-                    child: const Text(
-                      'Done',
-                      style: TextStyle(color: Color.fromRGBO(6, 45, 64, 1)),
-                    ),
-                  ),
-                ]
-                : null,
-      ),
       body: Stack(
         children: [
           mapBody,
           Positioned(
-            top: 10,
+            top: 100,
             left: 10,
             child: AnimatedContainer(
               duration: Duration(milliseconds: 300),
@@ -403,6 +382,23 @@ class _MapScreenState extends State<MapScreen> {
                 },
                 icon: const Icon(Icons.arrow_back),
                 label: const Text("Back to Import Screen"),
+              ),
+            ),
+          if (widget.showDoneButton)
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.check),
+                label: const Text("Done"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black54,
+                  elevation: 3,
+                ),
               ),
             ),
         ],
