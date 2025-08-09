@@ -1,4 +1,6 @@
+from fastapi import FastAPI
 from fastapi import APIRouter, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import instaloader
 import spacy
@@ -186,3 +188,35 @@ def parse_instagram_post(req: ParseRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+
+
+# -----------------------------
+# FastAPI application bootstrap
+# -----------------------------
+app = FastAPI(title="Away Parser API")
+
+# Allow local dev frontends to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # tighten this in prod
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount our router under /api
+app.include_router(router, prefix="/api")
+
+@app.post("/parse_instagram_post", include_in_schema=False)
+def parse_instagram_post_alias(req: ParseRequest):
+    # Reuse the same handler the router uses
+    return parse_instagram_post(req)
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+# Optional: run directly via `python away_parser.py`
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("away_parser:app", host="0.0.0.0", port=8000, reload=True)
