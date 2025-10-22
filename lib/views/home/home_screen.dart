@@ -168,7 +168,7 @@ class MyHomeScreen extends StatelessWidget {
             ],
           ),
           Positioned(
-            top: 40,
+            top: 55,
             left: 16,
             right: 16,
             child: Row(

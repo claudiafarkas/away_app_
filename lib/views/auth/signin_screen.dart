@@ -24,6 +24,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _signInWithEmail() async {
     setState(() => _isLoading = true);
     try {
+      await FirebaseAuth.instance.signOut(); // Clears any existing credentials
       await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -53,8 +54,9 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } catch (e) {
       if (mounted) {
+        print("❌ Google sign-in failed: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google sign-in failed: ${e.toString()}')),
+          SnackBar(content: Text('Sign-in error: ${e.toString()}')),
         );
       }
     } finally {

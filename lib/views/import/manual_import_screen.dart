@@ -2,9 +2,7 @@
 // Field include "Name", "City", "Country", "Latitude", "Longitude"
 
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:away/services/api_service.dart';
 import 'package:away/views/import/link_import_success_screen.dart';
 
 class ManualImportScreen extends StatefulWidget {
@@ -15,6 +13,7 @@ class ManualImportScreen extends StatefulWidget {
 }
 
 class _ManualImportScreenState extends State<ManualImportScreen> {
+  final ApiService _api = ApiService();
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
@@ -68,21 +67,19 @@ class _ManualImportScreenState extends State<ManualImportScreen> {
   }
 
   Future<Map<String, double>> postToBackendForGeocoding(String address) async {
-    final url = Uri.parse(
-      '${dotenv.env['BACKEND_URL']}/manual_geocode', //later place the deplpyed backend URL here (will get once ready for deployment)
-    );
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'address': address}),
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return {'lat': data['lat'].toDouble(), 'lng': data['lng'].toDouble()};
-    } else {
-      debugPrint("Backend error: ${response.body}");
-      throw Exception('Failed to geocode via backend');
+    try {
+      final data = await _api.geocodeAddress(
+        address,
+      ); // hits /api/geocode_address
+      final lat = (data['lat'] as num?)?.toDouble();
+      final lng = (data['lng'] as num?)?.toDouble();
+      if (lat == null || lng == null) {
+        throw Exception('lat/lng missing in response');
+      }
+      return {'lat': lat, 'lng': lng};
+    } catch (e) {
+      debugPrint('❌ postToBackendForGeocoding error: $e');
+      rethrow;
     }
   }
 
