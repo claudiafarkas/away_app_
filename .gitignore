@@ -2,9 +2,14 @@
 
 # Environment files
 *.env
+**/.env
 !*.env.example
 
 # Backend
+backend/__pycache__/
+backend/.venv/
+backend/.env    
+
 
 # Miscellaneous
 *.class
@@ -51,6 +56,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/.gradle/
+android/app/build/
 
 # Builds and Generated Artifacts
 /build/
@@ -64,8 +71,17 @@ app.*.map.json
 *.iml
 .DS_Store
 
-# DEpendency Caches
+# Dependency Caches
 /android/.gradle/
 /ios/Pods/
 /ios/flutter/flutter.podspec.json
+
+#Firebase keys
+**/firebase_options.dart
+
+# iOS build artifacts (Pod build caches)
+ios/Flutter/Flutter.framework/
+ios/Flutter/App.framework/
+ios/Flutter/engine/
+
 
