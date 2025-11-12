@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:away/views/welcome_load/welcome_load_screen.dart';
 import 'package:away/views/imported/imported_screen.dart';
@@ -12,7 +13,29 @@ import 'package:away/views/import/manual_import_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final envFile = File(".env");
+  print("📂 Checking for .env: ${envFile.absolute.path}");
+  print("📄 Exists? ${await envFile.exists()}");
+
   await dotenv.load(fileName: ".env");
+  // await dotenv.load(fileName: 'lib/.env');
+
+  // try {
+  //   await Firebase.initializeApp(
+  //     options: DefaultFirebaseOptions.currentPlatform,
+  //   );
+  //   print("✅ Firebase initialized successfully");
+  // } catch (e) {
+  //   print("❌ Firebase initialization failed: $e");
+  // }
+  try {
+    await dotenv.load(fileName: ".env");
+    print("✅ .env loaded");
+    print("🔑 IOS_CLIENT_ID: ${dotenv.env['IOS_CLIENT_ID']}");
+  } catch (e) {
+    print("❌ .env failed to load: $e");
+  }
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

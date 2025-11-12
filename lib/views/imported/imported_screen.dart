@@ -276,7 +276,15 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                               },
                             ]);
                             try {
-                              Navigator.pushNamed(context, '/map');
+                              Navigator.pushNamed(
+                                context,
+                                '/map',
+                                arguments: {
+                                  'fromImports': true,
+                                  // 'showDoneButton': true,
+                                  'showBackToImportButton': true,
+                                },
+                              );
                             } catch (e, stack) {
                               debugPrint("Navigation error: $e");
                               debugPrint("Stack trace: $stack");

@@ -43,22 +43,34 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
     try {
+      print("📱 Starting Google sign in flow...");
       final userCred = await AuthService.instance.signInWithGoogle();
-      if (userCred != null) {
+
+      if (!mounted) return;
+
+      if (userCred?.user != null) {
+        print("✅ Sign in successful, navigating...");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
         );
+      } else {
+        print("⚠️ Sign in cancelled or failed");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Sign in cancelled')));
       }
     } catch (e) {
-      if (mounted) {
-        print("❌ Google sign-in failed: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign-in error: ${e.toString()}')),
-        );
-      }
+      print("❌ Sign in error: $e");
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign in failed: ${e.toString()}')),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -139,6 +151,7 @@ class _SignInScreenState extends State<SignInScreen> {
               SocialSignInButton(
                 assetName: 'assets/google-logo.png',
                 text: 'Continue with Google',
+                // onPressed: _isLoading ? null : () => _signInWithGoogle(),
                 onPressed: _isLoading ? () {} : () => _signInWithGoogle(),
               ),
             ],

@@ -25,33 +25,51 @@ class AuthService {
   final _auth = FirebaseAuth.instance;
 
   Future<UserCredential?> signInWithGoogle() async {
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null; // user cancelled
+    try {
+      print("🚀 Starting Google Sign In...");
+      print(
+        "📱 iOS Client ID: ${dotenv.env['IOS_CLIENT_ID']?.substring(0, 10)}...",
+      );
 
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+      // Try sign in
+      final googleUser = await _googleSignIn.signIn().catchError((error) {
+        print("❌ GoogleSignIn.signIn() error: $error");
+        throw error;
+      });
 
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      if (googleUser == null) {
+        print("⚠️ User cancelled sign in");
+        return null;
+      }
 
-    print("⚙️ Signing in with credential...");
-    // Sign in to Firebase with the Google [UserCredential]
-    UserCredential userCredential = await _auth.signInWithCredential(
-      credential,
-    );
+      // Get auth details
+      final googleAuth = await googleUser.authentication.catchError((error) {
+        print("❌ Authentication error: $error");
+        throw error;
+      });
 
-    print("✅ Signed in. UID: ${userCredential.user?.uid}");
+      // Create credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    // Save user to Firestore
-    final user = userCredential.user;
+      // Sign in to Firebase
+      print("⚙️ Signing in to Firebase...");
+      final userCredential = await _auth.signInWithCredential(credential);
+      print("✅ Firebase sign in successful: ${userCredential.user?.uid}");
 
-    if (user != null) {
-      await saveUserToFirestore(user);
-      print("✅ User saved to Firestore: ${user.uid}");
+      // Save user data
+      if (userCredential.user != null) {
+        await saveUserToFirestore(userCredential.user!);
+      }
+
+      return userCredential;
+    } catch (e, stack) {
+      print("❌ Google Sign In failed: $e");
+      print("Stack trace: $stack");
+      throw e; // Rethrow to let UI handle it
     }
-    return userCredential;
   }
 
   Future<void> saveUserToFirestore(User user) async {

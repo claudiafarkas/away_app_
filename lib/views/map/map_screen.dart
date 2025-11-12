@@ -201,6 +201,14 @@ class _MapScreenState extends State<MapScreen> {
   // ----------------------------MAP FUNCTIONALITY------------------------------
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    final fromImports = args?['fromImports'] == true;
+    final showDoneButton =
+        args?['showDoneButton'] == true || widget.showDoneButton;
+    final showBackToImportButton =
+        args?['showBackToImportButton'] == true ||
+        widget.showBackToImportButton;
+
     print("🛠 MapScreen build method called");
     final locs = ImportService.instance.importedLocations;
     print("Locations from ImportService: $locs");
@@ -270,6 +278,13 @@ class _MapScreenState extends State<MapScreen> {
     }
     print("📦 Returning Scaffold with map");
     return Scaffold(
+      // appBar: AppBar(
+      //   // leading: fromImports ? const BackButton() : null,
+      //   title: const Text('Map'),
+      //   backgroundColor: Colors.white,
+      //   foregroundColor: Colors.black,
+      //   elevation: 0,
+      // ),
       body: Stack(
         children: [
           mapBody,
@@ -372,19 +387,24 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
-          if (widget.showBackToImportButton)
+          if (showBackToImportButton)
             Positioned(
               bottom: 20,
               left: 20,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.popUntil(context, ModalRoute.withName('/import'));
+                  Navigator.pop(context);
                 },
                 icon: const Icon(Icons.arrow_back),
                 label: const Text("Back to Import Screen"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black54,
+                  elevation: 3,
+                ),
               ),
             ),
-          if (widget.showDoneButton)
+          if (showDoneButton)
             Positioned(
               bottom: 20,
               right: 20,
