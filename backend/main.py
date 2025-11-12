@@ -1,21 +1,3 @@
-# from fastapi import FastAPI
-# from manual_geocode import router as manual_geocode_router
-# from away_parser import router as parser_router
-# # from parser import router as parser_router 
-
-# # Optional: include other routers like parser if needed
-# # from parser import router as parser_router
-
-
-
-# app = FastAPI()
-
-# # Register routers
-# app.include_router(manual_geocode_router)
-# app.include_router(parser_router)
-# # app.include_router(parser_router)
-
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -32,7 +14,7 @@ app = FastAPI(title="Away API")
 # CORS: keep permissive while developing/TestFlight; you can restrict origins later.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       # tighten later (e.g., to your domain)
+    allow_origins=["*"],       # tighten later (e.g., to the domain)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
