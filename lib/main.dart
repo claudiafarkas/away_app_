@@ -1,40 +1,17 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:away/views/welcome_load/welcome_load_screen.dart';
 import 'package:away/views/imported/imported_screen.dart';
 import 'package:away/views/map/map_screen.dart';
 import 'package:away/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:away/views/import/manual_import_screen.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final envFile = File(".env");
-  print("📂 Checking for .env: ${envFile.absolute.path}");
-  print("📄 Exists? ${await envFile.exists()}");
-
-  await dotenv.load(fileName: ".env");
-  // await dotenv.load(fileName: 'lib/.env');
-
-  // try {
-  //   await Firebase.initializeApp(
-  //     options: DefaultFirebaseOptions.currentPlatform,
-  //   );
-  //   print("✅ Firebase initialized successfully");
-  // } catch (e) {
-  //   print("❌ Firebase initialization failed: $e");
-  // }
-  try {
-    await dotenv.load(fileName: ".env");
-    print("✅ .env loaded");
-    print("🔑 IOS_CLIENT_ID: ${dotenv.env['IOS_CLIENT_ID']}");
-  } catch (e) {
-    print("❌ .env failed to load: $e");
-  }
 
   try {
     await Firebase.initializeApp(
@@ -44,7 +21,26 @@ Future<void> main() async {
   } catch (e) {
     print("❌ Firebase initialization failed: $e");
   }
-  runApp(MyApp());
+
+  // Initialize Firebase Remote Config
+  final remoteConfig = FirebaseRemoteConfig.instance;
+
+  try {
+    await remoteConfig.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: Duration(seconds: 10),
+        minimumFetchInterval: Duration(hours: 1),
+      ),
+    );
+
+    await remoteConfig.fetchAndActivate();
+    print("✅ Remote Config activated");
+    print("🔑 IOS_CLIENT_ID: ${remoteConfig.getString('IOS_CLIENT_ID')}");
+  } catch (e) {
+    print("❌ Remote Config failed: $e");
+  }
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
