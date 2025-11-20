@@ -33,6 +33,11 @@ Future<void> main() async {
       ),
     );
 
+    await remoteConfig.setDefaults(<String, dynamic>{
+      'IOS_CLIENT_ID': 'dummy-client-id.apps.googleusercontent.com',
+      'API_BASE_URL': 'https://dummy-api.com',
+    });
+
     await remoteConfig.fetchAndActivate();
     print("✅ Remote Config activated");
     print("🔑 IOS_CLIENT_ID: ${remoteConfig.getString('IOS_CLIENT_ID')}");
