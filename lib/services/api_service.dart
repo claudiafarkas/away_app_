@@ -13,7 +13,7 @@ import 'package:http/http.dart' as http;
 String get _defaultBaseUrl {
   if (kIsWeb) return 'http://127.0.0.1:8000';
   if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-  return 'http://127.0.0.1:8000';
+  return 'https://away-backend-975056194033.us-central1.run.app';
 }
 
 class ApiService {
