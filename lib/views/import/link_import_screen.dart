@@ -1,5 +1,3 @@
-// lib/views/import/link_import_screen.dart
-
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
@@ -71,13 +69,25 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
   }
 
   Future<void> _handleImport() async {
-    final url = _urlController.text.trim();
+    final rawInput = _urlController.text.trim();
+    final url = rawInput
+        .replaceAll(RegExp(r'\[|\]|\(|\)'), '') // remove markdown characters
+        .replaceAll(
+          RegExp(r'https?:\/\/\S*\[.*\]\(.*\)'),
+          '',
+        ) // remove markdown links
+        .replaceAll(RegExp(r'[)\s]+$'), '');
+    debugPrint('✅ Cleaned URL: "$url"');
     if (url.isEmpty || !_igRegex.hasMatch(url)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please paste a valid Instagram link.')),
       );
+      debugPrint('❌ Invalid or empty URL: "$url"');
       return;
     }
+
+    debugPrint('📤 Sending raw input: "$rawInput"');
+    debugPrint('📤 Sending cleaned URL to API: "$url"');
 
     setState(() => _isLoading = true);
     _startFakeProgress();
@@ -108,10 +118,17 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
         ),
       );
     } catch (e) {
+      debugPrint('❌ Exception during import: $e');
+      final isRateLimited = e.toString().contains("Please wait a few minutes");
+      debugPrint('❌ Full URL at failure: "$url"');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ Import failed: $e'),
+            content: Text(
+              isRateLimited
+                  ? "Instagram temporarily blocked requests. Try again in a few minutes."
+                  : "⚠️ Import failed: $e",
+            ),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 3),
           ),

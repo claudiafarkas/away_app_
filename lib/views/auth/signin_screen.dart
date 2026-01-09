@@ -4,8 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:away/views/auth/signup_screen.dart';
 import 'package:away/widgets/bottom_nav_scaffold.dart';
 import 'package:away/services/auth_service.dart';
-import 'package:away/views/auth/widgets/social_signin_button.dart';
+// import 'package:away/views/auth/widgets/social_signin_button.dart';
 // import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -42,39 +43,39 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    if (_isLoading) return;
+  // Future<void> _signInWithGoogle() async {
+  //   if (_isLoading) return;
 
-    setState(() => _isLoading = true);
-    try {
-      print("📱 Starting Google sign in flow...");
-      final userCred = await AuthService.instance.signInWithGoogle();
+  //   setState(() => _isLoading = true);
+  //   try {
+  //     print("📱 Starting Google sign in flow...");
+  //     final userCred = await AuthService.instance.signInWithGoogle();
 
-      if (!mounted) return;
+  //     if (!mounted) return;
 
-      if (userCred?.user != null) {
-        print("✅ Sign in successful, navigating...");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
-        );
-      } else {
-        print("⚠️ Sign in cancelled or failed");
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Sign in cancelled')));
-      }
-    } catch (e) {
-      print("❌ Sign in error: $e");
-      if (!mounted) return;
+  //     if (userCred?.user != null) {
+  //       print("✅ Sign in successful, navigating...");
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+  //       );
+  //     } else {
+  //       print("⚠️ Sign in cancelled or failed");
+  //       ScaffoldMessenger.of(
+  //         context,
+  //       ).showSnackBar(const SnackBar(content: Text('Sign in cancelled')));
+  //     }
+  //   } catch (e) {
+  //     print("❌ Sign in error: $e");
+  //     if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign in failed: ${e.toString()}')),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Sign in failed: ${e.toString()}')),
+  //     );
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -145,15 +146,51 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // Google sign-in
-              SocialSignInButton(
-                assetName: 'assets/google-logo.png',
-                text: 'Continue with Google',
-                // onPressed: _isLoading ? null : () => _signInWithGoogle(),
-                onPressed: _isLoading ? () {} : () => _signInWithGoogle(),
-              ),
+              if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+                const SizedBox(height: 16),
+                SignInWithAppleButton(
+                  onPressed:
+                      _isLoading
+                          ? null
+                          : () async {
+                            setState(() => _isLoading = true);
+                            try {
+                              final userCred =
+                                  await AuthService.instance.signInWithApple();
+
+                              if (!mounted) return;
+
+                              if (userCred?.user != null) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const BottomNavScaffold(),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Apple sign-in cancelled'),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Apple sign-in failed: $e'),
+                                ),
+                              );
+                            } finally {
+                              if (mounted) setState(() => _isLoading = false);
+                            }
+                          },
+                  style: SignInWithAppleButtonStyle.black,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ],
             ],
 
             const SizedBox(height: 24),
