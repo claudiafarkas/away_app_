@@ -32,6 +32,16 @@ except Exception:
 # Instaloader context (no login; if you hit rate limits, consider adding credentials)
 L = instaloader.Instaloader()
 
+# Replace with your real credentials (better yet, store securely)
+USERNAME = os.getenv("IG_USERNAME")
+PASSWORD = os.getenv("IG_PASSWORD")
+
+try:
+    L.login(USERNAME, PASSWORD)
+    print("✅ Logged in to Instagram")
+except Exception as e:
+    print(f"❌ Login failed: {e}")
+
 class ParseRequest(BaseModel):
     url: str  # expects Instagram URL
 
@@ -47,11 +57,23 @@ def get_caption(url: str) -> str:
     Fetch Instagram post caption using Instaloader + shortcode.
     Raises ValueError if URL is invalid.
     """
+    import time
     shortcode = extract_shortcode(url)
     if not shortcode:
         raise ValueError("Invalid Instagram URL. Could not extract shortcode.")
-    post = instaloader.Post.from_shortcode(L.context, shortcode)
-    return post.caption or ""
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            post = instaloader.Post.from_shortcode(L.context, shortcode)
+            return post.caption or ""
+        except Exception as e:
+            if "Please wait a few minutes" in str(e) and attempt < max_retries - 1:
+                wait_time = 60 * (2 ** attempt)  # Exponential backoff: 60s, 120s, 240s
+                print(f"Rate limited, waiting {wait_time} seconds before retry...")
+                time.sleep(wait_time)
+            else:
+                raise e
 
 def get_location_data(text: str) -> list[str]:
     """
