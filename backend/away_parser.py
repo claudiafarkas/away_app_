@@ -71,7 +71,7 @@ def get_caption(url: str) -> str:
         raise ValueError("Apify run timed out")
     
     # Get results
-    dataset_url = f"https://api.apify.com/v2/acts/apify~instagram-scraper/runs/{run_id}/datasets/default/items"
+    dataset_url = f"https://api.apify.com/v2/acts/apify~instagram-scraper/runs/{run_id}/dataset/items"
     dataset_response = requests.get(dataset_url, headers=headers)
     if dataset_response.status_code != 200:
         raise ValueError(f"Failed to get dataset: {dataset_response.text}")
