@@ -8,7 +8,7 @@ class DealsScreen extends StatelessWidget {
     return const Scaffold(
       body: Center(
         child: Text(
-          'Notes Page \n \n This is where you can write your notes - Premium Users will have the option to have a chat bot',
+          'Calendar Page \n \n AI Calendar coming soon!',
           style: TextStyle(color: Color.fromARGB(255, 244, 241, 219)),
         ),
       ),
