@@ -37,7 +37,7 @@ class ApiService {
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({'url': url}),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(const Duration(seconds: 90));
 
       debugPrint('⬅️ ${res.statusCode} ${res.reasonPhrase}');
       debugPrint('⬅️ Body: ${res.body}');

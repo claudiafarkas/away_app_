@@ -69,7 +69,7 @@ def get_caption(url: str) -> str:
             return post.caption or ""
         except Exception as e:
             if "Please wait a few minutes" in str(e) and attempt < max_retries - 1:
-                wait_time = 60 * (2 ** attempt)  # Exponential backoff: 60s, 120s, 240s
+                wait_time = 10 * (2 ** attempt)  # Shorter backoff: 10s, 20s, 40s
                 print(f"Rate limited, waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             else:
