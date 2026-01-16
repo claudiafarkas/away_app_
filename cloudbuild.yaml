@@ -1,6 +1,6 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/away-6daf3/cloud-run-source-deploy/away-app/away-backend:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/away-6daf3/cloud-run-source-deploy/away-app/away-backend:$COMMIT_SHA', './backend']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/away-6daf3/cloud-run-source-deploy/away-app/away-backend:$COMMIT_SHA']
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
