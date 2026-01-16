@@ -47,9 +47,9 @@ def get_caption(url: str) -> str:
     Raises ValueError if URL is invalid or API fails.
     """
     # Run the Apify actor
-    run_url = "https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs"
+    run_url = "https://api.apify.com/v2/acts/apify~instagram-scraper/runs"
     headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}", "Content-Type": "application/json"}
-    payload = {"postUrl": url}
+    payload = {"directUrls": [url]}
     
     response = requests.post(run_url, json=payload, headers=headers)
     if response.status_code != 201:
@@ -60,7 +60,7 @@ def get_caption(url: str) -> str:
     # Poll for completion
     import time
     for _ in range(30):  # Wait up to 30 * 5s = 150s
-        status_response = requests.get(f"https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs/{run_id}", headers=headers)
+        status_response = requests.get(f"https://api.apify.com/v2/acts/apify~instagram-scraper/runs/{run_id}", headers=headers)
         status = status_response.json()["data"]["status"]
         if status == "SUCCEEDED":
             break
@@ -71,7 +71,7 @@ def get_caption(url: str) -> str:
         raise ValueError("Apify run timed out")
     
     # Get results
-    dataset_url = f"https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs/{run_id}/dataset/items"
+    dataset_url = f"https://api.apify.com/v2/acts/apify~instagram-scraper/runs/{run_id}/dataset/items"
     dataset_response = requests.get(dataset_url, headers=headers)
     if dataset_response.status_code != 200:
         raise ValueError(f"Failed to get dataset: {dataset_response.text}")
