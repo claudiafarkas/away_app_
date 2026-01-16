@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import instaloader
-import spacy
 import requests
+import spacy
 import os
 import traceback
 import re
@@ -14,8 +13,11 @@ router = APIRouter(prefix="/api")
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 GOOGLE_API_KEY = os.getenv("BACKEND_GOOGLE_API_KEY") or os.getenv("GOOGLE_MAPS_API_KEY")
+APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
 if not GOOGLE_API_KEY:
     raise RuntimeError("Missing BACKEND_GOOGLE_API_KEY or GOOGLE_MAPS_API_KEY in environment")
+if not APIFY_API_TOKEN:
+    raise RuntimeError("Missing APIFY_API_TOKEN in environment")
 
 # --- spaCy model: try transformer first, fall back to small if unavailable ---
 try:
@@ -29,19 +31,6 @@ except Exception:
             "No spaCy model found. Install en_core_web_sm or en_core_web_trf."
         ) from e
 
-# Instaloader context (no login; if you hit rate limits, consider adding credentials)
-L = instaloader.Instaloader()
-
-# Replace with your real credentials (better yet, store securely)
-USERNAME = os.getenv("IG_USERNAME")
-PASSWORD = os.getenv("IG_PASSWORD")
-
-try:
-    L.login(USERNAME, PASSWORD)
-    print("✅ Logged in to Instagram")
-except Exception as e:
-    print(f"❌ Login failed: {e}")
-
 class ParseRequest(BaseModel):
     url: str  # expects Instagram URL
 
@@ -54,26 +43,45 @@ def extract_shortcode(url: str) -> str | None:
 
 def get_caption(url: str) -> str:
     """
-    Fetch Instagram post caption using Instaloader + shortcode.
-    Raises ValueError if URL is invalid.
+    Fetch Instagram post caption using Apify Instagram Post Scraper.
+    Raises ValueError if URL is invalid or API fails.
     """
-    import time
-    shortcode = extract_shortcode(url)
-    if not shortcode:
-        raise ValueError("Invalid Instagram URL. Could not extract shortcode.")
+    # Run the Apify actor
+    run_url = "https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs"
+    headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}", "Content-Type": "application/json"}
+    payload = {"postUrl": url}
     
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            post = instaloader.Post.from_shortcode(L.context, shortcode)
-            return post.caption or ""
-        except Exception as e:
-            if "Please wait a few minutes" in str(e) and attempt < max_retries - 1:
-                wait_time = 10 * (2 ** attempt)  # Shorter backoff: 10s, 20s, 40s
-                print(f"Rate limited, waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
-            else:
-                raise e
+    response = requests.post(run_url, json=payload, headers=headers)
+    if response.status_code != 201:
+        raise ValueError(f"Failed to start Apify run: {response.text}")
+    
+    run_id = response.json()["data"]["id"]
+    
+    # Poll for completion
+    import time
+    for _ in range(30):  # Wait up to 30 * 5s = 150s
+        status_response = requests.get(f"https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs/{run_id}", headers=headers)
+        status = status_response.json()["data"]["status"]
+        if status == "SUCCEEDED":
+            break
+        elif status in ["FAILED", "ABORTED"]:
+            raise ValueError(f"Apify run failed: {status}")
+        time.sleep(5)
+    else:
+        raise ValueError("Apify run timed out")
+    
+    # Get results
+    dataset_url = f"https://api.apify.com/v2/acts/apidojo~instagram-post-scraper/runs/{run_id}/dataset/items"
+    dataset_response = requests.get(dataset_url, headers=headers)
+    if dataset_response.status_code != 200:
+        raise ValueError(f"Failed to get dataset: {dataset_response.text}")
+    
+    data = dataset_response.json()
+    if not data:
+        raise ValueError("No data returned from Apify")
+    
+    caption = data[0].get("caption", "")
+    return caption
 
 def get_location_data(text: str) -> list[str]:
     """
