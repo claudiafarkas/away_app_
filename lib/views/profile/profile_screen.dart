@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../auth/signin_screen.dart';
@@ -50,12 +53,146 @@ class PrivacyScreen extends StatelessWidget {
   }
 }
 
-class PersonalInfoScreen extends StatelessWidget {
+class PersonalInfoScreen extends StatefulWidget {
   const PersonalInfoScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<PersonalInfoScreen> createState() => _PersonalInfoScreenState();
+}
+
+class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+
+  String? _email;
+  String? _photoUrl;
+
+  @override
+  void initState() {
+    super.initState();
     final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final fullName = user.displayName ?? '';
+      final nameParts = fullName.split(' ');
+      _firstNameController.text = nameParts.isNotEmpty ? nameParts[0] : '';
+      _lastNameController.text =
+          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+      _email = user.email;
+      _photoUrl = user.photoURL;
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked == null) {
+      print('⚠️ Image picking cancelled');
+      return;
+    }
+
+    print('🖼 Picked image path: ${picked.path}');
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('❌ No authenticated user — cannot upload profile image');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to update your photo'),
+        ),
+      );
+      return;
+    }
+
+    print('👤 Uploading profile photo for UID: ${user.uid}');
+
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('user_profiles')
+        .child('${user.uid}.jpg');
+
+    print('☁️ Firebase Storage path: ${storageRef.fullPath}');
+
+    try {
+      // Read file as bytes
+      final file = File(picked.path);
+      print('📂 Exists: ${await file.exists()}');
+      final fileSize = await file.length();
+      print('📏 File size: $fileSize');
+
+      // Upload using bytes instead of File
+      try {
+        final fileBytes = await file.readAsBytes();
+        print('📖 File read as bytes: ${fileBytes.length} bytes');
+
+        await storageRef.putData(
+          fileBytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+        print('✅ Image uploaded to Firebase Storage');
+      } catch (uploadError) {
+        print('❌ Upload failed: $uploadError');
+        rethrow;
+      }
+
+      // Get download URL
+      try {
+        final downloadUrl = await storageRef.getDownloadURL();
+        print('🔗 Download URL received: $downloadUrl');
+
+        // Update Firebase Auth profile
+        await user.updatePhotoURL(downloadUrl);
+        print('✅ Photo URL updated in Auth');
+
+        await user.reload();
+        print('✅ User reloaded');
+
+        final refreshedUser = FirebaseAuth.instance.currentUser;
+        print('🔄 Reloaded user photoURL: ${refreshedUser?.photoURL}');
+
+        setState(() {
+          _photoUrl = refreshedUser?.photoURL;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated successfully')),
+        );
+      } catch (urlError) {
+        print('❌ Download URL retrieval failed: $urlError');
+        rethrow;
+      }
+    } catch (e, stack) {
+      print('❌ Error updating profile picture: $e');
+      print('Stack trace: $stack');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update profile picture')),
+      );
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      final newName =
+          '${_firstNameController.text} ${_lastNameController.text}';
+      print('Updating display name to: $newName');
+
+      await user?.updateDisplayName(newName);
+
+      if (_photoUrl != null && !_photoUrl!.startsWith('http')) {
+        // If it's a local path, you'd typically upload to storage and get a URL
+        // For now, we just skip updating photoURL
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Changes saved successfully')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Personal Info'),
@@ -64,18 +201,76 @@ class PersonalInfoScreen extends StatelessWidget {
       ),
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Name: ${user?.displayName ?? 'Not set'}'),
-              const SizedBox(height: 12),
-              Text('Email: ${user?.email ?? 'Not set'}'),
+              GestureDetector(
+                onTap: _pickImage,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage:
+                          _photoUrl != null
+                              ? (_photoUrl!.startsWith('http')
+                                  ? NetworkImage(_photoUrl!)
+                                  : FileImage(File(_photoUrl!))
+                                      as ImageProvider)
+                              : null,
+                      child:
+                          _photoUrl == null
+                              ? const Icon(Icons.person, size: 40)
+                              : null,
+                    ),
+                    const CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.edit, size: 16, color: Colors.black),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
-              const Text(
-                'Profile updates will be added in a future version.',
-                style: TextStyle(color: Colors.black54),
+              TextFormField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(labelText: 'First Name'),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Enter your first name'
+                            : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(labelText: 'Last Name'),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Enter your last name'
+                            : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                initialValue: _email,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _saveChanges,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF062D40),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text('Save Changes'),
               ),
             ],
           ),
@@ -110,9 +305,14 @@ class LoginSecurityScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -184,13 +384,15 @@ class ProfileScreen extends StatelessWidget {
                   'Update your name, email, or profile photo',
                   Icons.person,
                   accentColor,
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    // Await navigation and refresh on return
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const PersonalInfoScreen(),
                       ),
                     );
+                    setState(() {});
                   },
                 ),
 

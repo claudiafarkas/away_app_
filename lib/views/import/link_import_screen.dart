@@ -70,15 +70,11 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
 
   Future<void> _handleImport() async {
     final rawInput = _urlController.text.trim();
-    final url = rawInput
-        .replaceAll(RegExp(r'\[|\]|\(|\)'), '') // remove markdown characters
-        .replaceAll(
-          RegExp(r'https?:\/\/\S*\[.*\]\(.*\)'),
-          '',
-        ) // remove markdown links
-        .replaceAll(RegExp(r'[)\s]+$'), '');
+    // Extract the first valid Instagram URL from the input
+    final match = _igRegex.firstMatch(rawInput);
+    final url = match?.group(0) ?? '';
     debugPrint('✅ Cleaned URL: "$url"');
-    if (url.isEmpty || !_igRegex.hasMatch(url)) {
+    if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please paste a valid Instagram link.')),
       );

@@ -100,7 +100,7 @@
 // lib/views/auth/sign_up_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 import './widgets/social_signin_button.dart';
 import '../../widgets/bottom_nav_scaffold.dart';
 
@@ -150,30 +150,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _signUpWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
-      final auth = await googleUser.authentication;
-      final cred = GoogleAuthProvider.credential(
-        accessToken: auth.accessToken,
-        idToken: auth.idToken,
-      );
-      await _auth.signInWithCredential(cred);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Google sign-up failed')));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -186,7 +162,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F8F0),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
@@ -270,12 +246,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              SocialSignInButton(
-                assetName: 'assets/google-logo.png',
-                text: 'Continue with Google',
-                onPressed: _isLoading ? () {} : () => _signUpWithGoogle(),
-              ),
-              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
