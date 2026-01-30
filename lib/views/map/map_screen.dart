@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:away/services/import_service.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 class MapScreen extends StatefulWidget {
   final bool showDoneButton;
@@ -186,12 +188,257 @@ class _MapScreenState extends State<MapScreen> {
 
   double _currentZoom = 12;
   LatLng _lastMapPosition = LatLng(45.521563, -122.677433);
+  final double _zoomOnFocus = 15;
+  // Color assignment per country
+  final List<double> countryHues = [0, 25, 50, 100, 160, 200, 260, 300, 330];
+  final Map<String, double> _countryColorMap = {};
+  final Map<double, BitmapDescriptor> _iconCache = {};
+  Set<Marker> _markers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareMarkers();
+  }
+
+  Color _colorFromHue(double hue) {
+    final hsv = HSVColor.fromAHSV(1.0, hue, 0.65, 0.95);
+    return hsv.toColor();
+  }
+
+  Future<BitmapDescriptor> _createCircleMarkerIcon(
+    Color color, {
+    double size = 48,
+    double border = 4,
+  }) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = Offset(size / 2, size / 2);
+    // Transparent background
+    final bgPaint = Paint()..color = const Color(0x00000000);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size, size), bgPaint);
+    // White border circle
+    final borderPaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, size / 2, borderPaint);
+    // Inner color circle
+    final fillPaint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, size / 2 - border, fillPaint);
+    final image = await recorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  }
+
+  String _countryFromAddress(String address) {
+    final parts = address.split(',');
+    return parts.isNotEmpty ? parts.last.trim() : 'Unknown';
+  }
+
+  LatLng? _latestValidLatLngFromLocs(List<dynamic> locs) {
+    for (int i = locs.length - 1; i >= 0; i--) {
+      final l = locs[i];
+      final latValue = l['lat'];
+      final lngValue = l['lng'];
+      try {
+        final lat =
+            (latValue is double ? latValue : (latValue as num).toDouble());
+        final lng =
+            (lngValue is double ? lngValue : (lngValue as num).toDouble());
+        if (!(lat == 0.0 && lng == 0.0)) {
+          return LatLng(lat, lng);
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _prepareMarkers() async {
+    final locs = ImportService.instance.importedLocations;
+    final List<Marker> temp = [];
+    for (final l in locs) {
+      final name = l['name'] as String? ?? 'Unknown';
+      final latValue = l['lat'];
+      final lngValue = l['lng'];
+      double lat, lng;
+      try {
+        lat = (latValue is double ? latValue : (latValue as num).toDouble());
+        lng = (lngValue is double ? lngValue : (lngValue as num).toDouble());
+      } catch (_) {
+        continue;
+      }
+      if (lat == 0.0 && lng == 0.0) continue;
+      final address = l['address'] as String? ?? 'No address available';
+      final country = _countryFromAddress(address);
+      _countryColorMap.putIfAbsent(
+        country,
+        () => countryHues[_countryColorMap.length % countryHues.length],
+      );
+      final hue = _countryColorMap[country]!;
+      BitmapDescriptor icon;
+      if (_iconCache.containsKey(hue)) {
+        icon = _iconCache[hue]!;
+      } else {
+        icon = await _createCircleMarkerIcon(_colorFromHue(hue));
+        _iconCache[hue] = icon;
+      }
+      temp.add(
+        Marker(
+          markerId: MarkerId(name),
+          position: LatLng(lat, lng),
+          infoWindow: InfoWindow(title: name, snippet: address),
+          icon: icon,
+          onTap: () {
+            mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(LatLng(lat, lng), _zoomOnFocus),
+            );
+          },
+        ),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _markers = temp.toSet();
+      });
+    }
+    // Animate to latest marker once ready
+    if (mapController != null && temp.isNotEmpty) {
+      mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(temp.last.position, _zoomOnFocus),
+      );
+    }
+  }
+
+  Future<void> _showPinsSheet(
+    Set<Marker> markers,
+    Map<String, double> countryColorMap,
+  ) async {
+    setState(() => _isExpanded = true);
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      barrierColor: Colors.black.withOpacity(0.15),
+      backgroundColor: Colors.white.withOpacity(0.92),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        // Group markers by country
+        final grouped = <String, List<Marker>>{};
+        for (var m in markers) {
+          final country =
+              m.infoWindow.snippet?.split(',').last.trim() ?? 'Unknown';
+          grouped.putIfAbsent(country, () => []).add(m);
+        }
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.35,
+          minChildSize: 0.2,
+          maxChildSize: 0.9,
+          expand: false,
+          builder:
+              (ctx, scrollController) => Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: const [
+                        Text(
+                          'Your Locations',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF062D40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      children:
+                          grouped.entries.map((entry) {
+                            final country = entry.key;
+                            final hue = countryColorMap[country] ?? 200;
+                            final color = _colorFromHue(hue);
+                            return ExpansionTile(
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              leading: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                              ),
+                              title: Text(
+                                country,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF062D40),
+                                ),
+                              ),
+                              children:
+                                  entry.value.map((marker) {
+                                    return ListTile(
+                                      dense: true,
+                                      visualDensity: VisualDensity.compact,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                      title: Text(
+                                        marker.markerId.value,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                      onTap: () {
+                                        Navigator.of(ctx).maybePop();
+                                        mapController?.animateCamera(
+                                          CameraUpdate.newLatLngZoom(
+                                            marker.position,
+                                            _zoomOnFocus,
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }).toList(),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+        );
+      },
+    );
+    if (mounted) setState(() => _isExpanded = false);
+  }
 
   void _onMapCreated(
     GoogleMapController controller,
     LatLng latestMarkerPosition,
   ) {
     mapController = controller;
+    // Restore custom map style
     mapController?.setMapStyle(_mapStyle);
     mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(latestMarkerPosition, _currentZoom),
@@ -213,55 +460,28 @@ class _MapScreenState extends State<MapScreen> {
     final locs = ImportService.instance.importedLocations;
     print("Locations from ImportService: $locs");
 
-    print("🧭 Starting to generate markers");
-    final tempList =
-        locs.map((l) {
-          final name = l['name'] as String? ?? 'Unknown';
-          final latValue = l['lat'];
-          final lngValue = l['lng'];
-          double lat = 0.0;
-          double lng = 0.0;
-          try {
-            lat =
-                (latValue is double ? latValue : (latValue as num).toDouble());
-            lng =
-                (lngValue is double ? lngValue : (lngValue as num).toDouble());
-          } catch (_) {
-            print("Skipping marker with non-numeric coordinates: $name");
-            return null;
-          }
-          final address = l['address'] as String? ?? 'No address available';
+    print("📍 Total markers ready: ${_markers.length}");
 
-          print("Creating marker: $name at ($lat, $lng)");
-          if (lat == 0.0 && lng == 0.0) {
-            print("Skipping marker with invalid coordinates: $name");
-            return null;
-          }
-          return Marker(
-            markerId: MarkerId(name),
-            position: LatLng(lat, lng),
-            infoWindow: InfoWindow(title: name, snippet: address),
-          );
-        }).toList();
-    // filter out any nulls and convert to a Set<Marker>
-    final markers = tempList.where((m) => m != null).cast<Marker>().toSet();
-    print("📍 Total markers created: ${markers.length}");
-
-    if (markers.isEmpty) {
+    if (_markers.isEmpty) {
       print('No markers available. Using default center.');
     }
     print("🧮 Calculating center of map");
-    final center = markers.isNotEmpty ? markers.last.position : _center;
+    // Prefer latest imported location if available, else use prepared markers, else default center
+    final latestLocCenter = _latestValidLatLngFromLocs(locs);
+    final center =
+        latestLocCenter ??
+        (_markers.isNotEmpty ? _markers.last.position : _center);
 
     Widget mapBody;
     try {
       mapBody = GoogleMap(
         onMapCreated: (controller) => _onMapCreated(controller, center),
+        mapType: MapType.normal,
         initialCameraPosition: CameraPosition(
           target: center,
-          zoom: markers.isNotEmpty ? 12 : 2,
+          zoom: _markers.isNotEmpty ? 12 : 2,
         ),
-        markers: markers,
+        markers: _markers,
         zoomControlsEnabled: true,
         zoomGesturesEnabled: true,
         myLocationButtonEnabled: false,
@@ -278,59 +498,49 @@ class _MapScreenState extends State<MapScreen> {
     }
     print("📦 Returning Scaffold with map");
     return Scaffold(
-      // appBar: AppBar(
-      //   // leading: fromImports ? const BackButton() : null,
-      //   title: const Text('Map'),
-      //   backgroundColor: Colors.white,
-      //   foregroundColor: Colors.black,
-      //   elevation: 0,
-      // ),
       body: Stack(
         children: [
           mapBody,
+          // Overlay replaced with compact translucent bottom sheet opened via button
           Positioned(
-            top: 100,
-            left: 10,
-            child: AnimatedContainer(
-              duration: Duration(milliseconds: 300),
-              width: 140,
-              height: _isExpanded ? 250 : 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                    title: Text(
-                      _isExpanded ? "Hide Pins" : "Show Pins",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: Icon(
-                      _isExpanded ? Icons.expand_less : Icons.expand_more,
-                      size: 18,
-                    ),
-                    onTap: () {
-                      setState(() {
-                        _isExpanded = !_isExpanded;
-                      });
-                    },
+            top: 60,
+            left: 16,
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              elevation: 3,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () {
+                  _showPinsSheet(_markers, _countryColorMap);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                  if (_isExpanded)
-                    Expanded(
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        children: _buildGroupedMarkerList(markers),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isExpanded
+                            ? Icons.map_outlined
+                            : Icons.location_on_outlined,
+                        size: 18,
+                        color: Color(0xFF062D40),
                       ),
-                    ),
-                ],
+                      SizedBox(width: 6),
+                      Text(
+                        _isExpanded ? "Hide Pins" : "Show Pins",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF062D40),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -439,11 +649,16 @@ class _MapScreenState extends State<MapScreen> {
           entry.key,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
         children:
             entry.value.map((marker) {
               return ListTile(
                 dense: true,
                 visualDensity: VisualDensity.compact,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 2,
+                ),
                 title: Text(
                   marker.markerId.value,
                   style: const TextStyle(fontSize: 13),

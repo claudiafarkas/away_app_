@@ -119,6 +119,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
 
+  String _getFriendlyErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'This email is already registered. Try signing in instead!';
+      case 'weak-password':
+        return 'Please choose a stronger password (at least 6 characters).';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'operation-not-allowed':
+        return 'Sign up is currently unavailable. Please try again later.';
+      default:
+        return 'Sign up failed. Please try again.';
+    }
+  }
+
   Future<void> _signUpWithEmail() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -142,9 +157,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
       );
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Sign up failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red.shade400,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

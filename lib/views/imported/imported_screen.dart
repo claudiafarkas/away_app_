@@ -505,6 +505,8 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                           selected: isSelected,
                           selectedColor: Color(0xFF062D40),
                           backgroundColor: Colors.grey[200],
+                          showCheckmark: true,
+                          checkmarkColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                             side: BorderSide(

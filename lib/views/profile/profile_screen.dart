@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -283,6 +284,132 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 class LoginSecurityScreen extends StatelessWidget {
   const LoginSecurityScreen({super.key});
 
+  Future<void> _deleteAccount(BuildContext context) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Account'),
+          content: const Text(
+            'Are you sure you want to permanently delete your account?\n\n'
+            'This action cannot be undone. All your data, including:\n'
+            '• Profile information\n'
+            '• Saved videos and locations\n'
+            '• Map pins and collections\n\n'
+            'will be permanently deleted.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete Account'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    // Show loading dialog
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Deleting your account...'),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('No user logged in');
+
+      final uid = user.uid;
+
+      // Delete Firestore user data
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+
+      // Delete any related collections (videos, locations, etc.)
+      // Add more collections as needed
+      final videosSnapshot =
+          await FirebaseFirestore.instance
+              .collection('videos')
+              .where('userId', isEqualTo: uid)
+              .get();
+      for (var doc in videosSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete Firebase Auth user
+      await user.delete();
+
+      // Close loading dialog
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+
+      // Navigate to sign in screen
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const SignInScreen()),
+        (route) => false,
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your account has been successfully deleted.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Close loading dialog
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+
+      // Show error dialog
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text(
+              'Failed to delete account. Please try again or contact support.\n\nError: ${e.toString()}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -295,9 +422,44 @@ class LoginSecurityScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: const Text(
-            'Password updates and advanced security controls will be available in a future update.',
-            style: TextStyle(fontSize: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Password updates and advanced security controls will be available in a future update.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              const Text(
+                'Danger Zone',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => _deleteAccount(context),
+                icon: const Icon(Icons.delete_forever),
+                label: const Text('Delete Account'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Permanently delete your account and all associated data. This action cannot be undone.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
           ),
         ),
       ),

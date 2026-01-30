@@ -22,9 +22,50 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool _isLoading = false;
 
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Sign In Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  String _getFriendlyErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return "We couldn't find an account with that email. Try signing up instead!";
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'user-disabled':
+        return 'This account has been disabled. Contact support for help.';
+      case 'invalid-credential':
+        return "Email or password is incorrect. Please check and try again.";
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      default:
+        return 'Sign in failed. Please check your credentials and try again.';
+    }
+  }
+
   Future<void> _signInWithEmail() async {
     setState(() => _isLoading = true);
     try {
+      if (_emailController.text.trim().isEmpty ||
+          _passwordController.text.trim().isEmpty) {
+        _showErrorDialog('Please enter both email and password.');
+        return;
+      }
       await FirebaseAuth.instance.signOut(); // Clears any existing credentials
       await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -35,47 +76,11 @@ class _SignInScreenState extends State<SignInScreen> {
         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
       );
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+      _showErrorDialog(_getFriendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // Future<void> _signInWithGoogle() async {
-  //   if (_isLoading) return;
-
-  //   setState(() => _isLoading = true);
-  //   try {
-  //     print("📱 Starting Google sign in flow...");
-  //     final userCred = await AuthService.instance.signInWithGoogle();
-
-  //     if (!mounted) return;
-
-  //     if (userCred?.user != null) {
-  //       print("✅ Sign in successful, navigating...");
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
-  //       );
-  //     } else {
-  //       print("⚠️ Sign in cancelled or failed");
-  //       ScaffoldMessenger.of(
-  //         context,
-  //       ).showSnackBar(const SnackBar(content: Text('Sign in cancelled')));
-  //     }
-  //   } catch (e) {
-  //     print("❌ Sign in error: $e");
-  //     if (!mounted) return;
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Sign in failed: ${e.toString()}')),
-  //     );
-  //   } finally {
-  //     if (mounted) setState(() => _isLoading = false);
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -170,18 +175,14 @@ class _SignInScreenState extends State<SignInScreen> {
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Apple sign-in cancelled'),
-                                  ),
+                                _showErrorDialog(
+                                  'Apple sign-in cancelled. Please try again.',
                                 );
                               }
                             } catch (e) {
                               if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Apple sign-in failed: $e'),
-                                ),
+                              _showErrorDialog(
+                                "Apple sign-in failed. Please try again and confirm you're using the right credentials.",
                               );
                             } finally {
                               if (mounted) setState(() => _isLoading = false);

@@ -25,7 +25,7 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
   @override
   void initState() {
     super.initState();
-    _primeClipboard();
+    // Removed automatic clipboard reading on init - will only happen when user taps paste button
     _urlController.addListener(() => setState(() {}));
   }
 

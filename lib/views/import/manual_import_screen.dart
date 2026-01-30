@@ -140,7 +140,7 @@ class _ManualImportScreenState extends State<ManualImportScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _submitForm,
-                icon: const Icon(Icons.check),
+                icon: const Icon(Icons.check, size: 24, color: Colors.white),
                 label: const Text("Save Location"),
                 // This should then appear under the selected locations on the Import Success page, styled like the other location pins
                 style: ElevatedButton.styleFrom(

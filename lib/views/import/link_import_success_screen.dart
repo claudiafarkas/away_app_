@@ -156,6 +156,22 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                                               value ?? false;
                                         });
                                       },
+                                      fillColor: WidgetStateProperty.resolveWith<
+                                        Color
+                                      >((Set<WidgetState> states) {
+                                        if (states.contains(
+                                          WidgetState.selected,
+                                        )) {
+                                          return const Color(
+                                            0xFF062D40,
+                                          ); // Dark blue when checked
+                                        }
+                                        return Colors
+                                            .grey
+                                            .shade300; // Light grey when unchecked
+                                      }),
+                                      checkColor:
+                                          Colors.white, // White checkmark
                                     ),
                                     Expanded(
                                       child: Column(
