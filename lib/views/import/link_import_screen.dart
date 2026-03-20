@@ -90,6 +90,25 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
     try {
       final result = await _apiService.parseInstagramUrl(url);
       final caption = result['caption'] as String;
+      final videoUrl =
+          ((result['videoUrl'] ?? result['video_url'] ?? result['url'])
+                      ?.toString()
+                      .trim()
+                      .isNotEmpty ??
+                  false)
+              ? (result['videoUrl'] ?? result['video_url'] ?? result['url'])
+                  .toString()
+                  .trim()
+              : url;
+      String? thumbnailUrl =
+          (result['thumbnailUrl'] ??
+                  result['thumbnail_url'] ??
+                  result['thumbnail'])
+              ?.toString()
+              .trim();
+      if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
+        thumbnailUrl = await _apiService.tryFetchInstagramThumbnail(url);
+      }
       final locList = result['locations'] as List<dynamic>;
 
       final locations =
@@ -109,8 +128,13 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
         context,
         MaterialPageRoute(
           builder:
-              (_) =>
-                  ImportSuccessScreen(caption: caption, locations: locations),
+              (_) => ImportSuccessScreen(
+                caption: caption,
+                locations: locations,
+                videoUrl: videoUrl,
+                thumbnailUrl: thumbnailUrl,
+                sourceUrl: url,
+              ),
         ),
       );
     } catch (e) {

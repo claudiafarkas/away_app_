@@ -34,6 +34,16 @@ except Exception:
 class ParseRequest(BaseModel):
     url: str  # expects Instagram URL
 
+
+def _pick_first_non_empty(candidates: list):
+    for c in candidates:
+        if c is None:
+            continue
+        if isinstance(c, str) and c.strip() == "":
+            continue
+        return c
+    return None
+
 def extract_shortcode(url: str) -> str | None:
     """
     Extracts the shortcode from a valid Instagram URL (/reel/, /p/, /tv/).
@@ -41,9 +51,9 @@ def extract_shortcode(url: str) -> str | None:
     match = re.search(r"(?:/reel/|/p/|/tv/)([A-Za-z0-9_-]{5,})", url)
     return match.group(1) if match else None
 
-def get_caption(url: str) -> str:
+def get_post_data(url: str) -> dict:
     """
-    Fetch Instagram post caption using Apify Instagram Post Scraper.
+    Fetch Instagram post data using Apify Instagram Post Scraper.
     Raises ValueError if URL is invalid or API fails.
     """
     # Run the Apify actor
@@ -80,8 +90,48 @@ def get_caption(url: str) -> str:
     data = dataset_response.json()
     if not data:
         raise ValueError("No data returned from Apify")
-    caption = data[0].get("caption", "")
-    return caption
+    item = data[0]
+
+    caption = item.get("caption", "")
+    thumbnail_url = _pick_first_non_empty([
+        item.get("displayUrl"),
+        item.get("thumbnailUrl"),
+        item.get("thumbnail_url"),
+        item.get("imageUrl"),
+        item.get("display_url"),
+    ])
+    video_url = _pick_first_non_empty([
+        item.get("videoUrl"),
+        item.get("video_url"),
+        item.get("url"),
+        item.get("postUrl"),
+        item.get("post_url"),
+        item.get("inputUrl"),
+        url,
+    ])
+
+    # Some actor outputs nest media in child resources; use first media URL as fallback.
+    resources = item.get("childPosts") or item.get("latestComments") or []
+    if isinstance(resources, list):
+        for r in resources:
+            if not isinstance(r, dict):
+                continue
+            thumbnail_url = thumbnail_url or _pick_first_non_empty([
+                r.get("displayUrl"),
+                r.get("thumbnailUrl"),
+                r.get("imageUrl"),
+            ])
+            video_url = video_url or _pick_first_non_empty([
+                r.get("videoUrl"),
+                r.get("url"),
+            ])
+
+    return {
+        "caption": caption,
+        "videoUrl": str(video_url).strip() if video_url else url,
+        "thumbnailUrl": str(thumbnail_url).strip() if thumbnail_url else None,
+        "sourceUrl": url,
+    }
 
 def get_location_data(text: str) -> list[str]:
     """
@@ -175,7 +225,13 @@ def dedupe_locations(locations: list[dict]) -> list[dict]:
 def parse_instagram_post(req: ParseRequest):
     """
     Body: { "url": "<instagram link>" }
-    Returns: { "caption": str, "locations": [{ name,address,city,country,lat,lng }...] }
+        Returns: {
+            "caption": str,
+            "videoUrl": str,
+            "thumbnailUrl": str | null,
+            "sourceUrl": str,
+            "locations": [{ name,address,city,country,lat,lng }...]
+        }
     """
     # Basic URL guard so manual address payloads don’t hit this route by mistake
     if not req.url or not (req.url.startswith("http://") or req.url.startswith("https://")):
@@ -185,11 +241,18 @@ def parse_instagram_post(req: ParseRequest):
         )
 
     try:
-        caption = get_caption(req.url)
+        post = get_post_data(req.url)
+        caption = post["caption"]
         names = get_location_data(caption)
         geocoded = [g for g in (geocode_name(n) for n in names) if g]
         unique = dedupe_locations(geocoded)
-        return {"caption": caption, "locations": unique}
+        return {
+            "caption": caption,
+            "videoUrl": post.get("videoUrl") or req.url,
+            "thumbnailUrl": post.get("thumbnailUrl"),
+            "sourceUrl": post.get("sourceUrl") or req.url,
+            "locations": unique,
+        }
 
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

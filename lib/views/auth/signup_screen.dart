@@ -101,8 +101,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:google_sign_in/google_sign_in.dart';
-import './widgets/social_signin_button.dart';
 import '../../widgets/bottom_nav_scaffold.dart';
+import 'package:away/services/import_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -152,6 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: pass,
       );
       await cred.user?.updateDisplayName(name);
+      await ImportService.instance.loadFromFirestore();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),

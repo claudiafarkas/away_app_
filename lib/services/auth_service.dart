@@ -2,11 +2,11 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // at the top if not already
-import 'dart:io';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 // import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:away/services/import_service.dart';
 
 class AuthService {
   AuthService._() {
@@ -161,6 +161,7 @@ class AuthService {
 
   /// Optional: sign out from both providers.
   Future<void> signOut() async {
+    ImportService.instance.clearAll();
     await _auth.signOut();
     await _googleSignIn.signOut();
   }

@@ -3,16 +3,21 @@
 import 'package:flutter/material.dart';
 import 'package:away/services/import_service.dart';
 import 'package:away/views/map/map_screen.dart';
-import 'package:away/views/import/manual_import_screen.dart';
 
 class ImportSuccessScreen extends StatefulWidget {
   final String caption;
   final List<Map<String, dynamic>> locations;
+  final String? videoUrl;
+  final String? thumbnailUrl;
+  final String? sourceUrl;
 
   const ImportSuccessScreen({
     super.key,
     required this.caption,
     required this.locations,
+    this.videoUrl,
+    this.thumbnailUrl,
+    this.sourceUrl,
   });
 
   @override
@@ -210,7 +215,7 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 print(
                                   "🧪 Button pressed. Current selected states: $_selectedLocations",
                                 );
@@ -248,6 +253,8 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                                           return {
                                             'name': loc['name'] ?? 'Unknown',
                                             'address': loc['address'] ?? '',
+                                            'city': loc['city'] ?? '',
+                                            'country': loc['country'] ?? '',
                                             'lat':
                                                 lat is double
                                                     ? lat
@@ -256,6 +263,10 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                                                 lng is double
                                                     ? lng
                                                     : (lng as num).toDouble(),
+                                            'videoUrl': widget.videoUrl,
+                                            'thumbnailUrl': widget.thumbnailUrl,
+                                            'sourceUrl': widget.sourceUrl,
+                                            'caption': widget.caption,
                                           };
                                         })
                                         .whereType<Map<String, dynamic>>()
@@ -264,9 +275,9 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                                 print(
                                   "🗺 Navigating to map with locations: $selectedLocations",
                                 );
-                                ImportService.instance.addLocations(
-                                  selectedLocations,
-                                );
+                                await ImportService.instance
+                                    .addAndPersistLocations(selectedLocations);
+                                if (!mounted) return;
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

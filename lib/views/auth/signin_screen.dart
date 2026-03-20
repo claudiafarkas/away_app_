@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:away/views/auth/signup_screen.dart';
 import 'package:away/widgets/bottom_nav_scaffold.dart';
 import 'package:away/services/auth_service.dart';
+import 'package:away/services/import_service.dart';
 // import 'package:away/views/auth/widgets/social_signin_button.dart';
 // import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -71,6 +72,7 @@ class _SignInScreenState extends State<SignInScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      await ImportService.instance.loadFromFirestore();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
@@ -168,6 +170,8 @@ class _SignInScreenState extends State<SignInScreen> {
                               if (!mounted) return;
 
                               if (userCred?.user != null) {
+                                await ImportService.instance
+                                    .loadFromFirestore();
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(

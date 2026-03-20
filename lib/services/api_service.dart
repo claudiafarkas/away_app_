@@ -78,6 +78,24 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Best-effort thumbnail resolver for Instagram post URLs.
+  /// Uses noembed as a public fallback when backend does not return thumbnail data.
+  Future<String?> tryFetchInstagramThumbnail(String url) async {
+    final uri = Uri.parse(
+      'https://noembed.com/embed?url=${Uri.encodeComponent(url)}',
+    );
+    try {
+      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return null;
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final thumb = (data['thumbnail_url'] ?? data['thumbnailUrl'])?.toString();
+      if (thumb == null || thumb.isEmpty) return null;
+      return thumb;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 

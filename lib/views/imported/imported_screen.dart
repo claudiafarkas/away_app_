@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:away/services/import_service.dart';
+import 'package:away/views/imported/import_post_screen.dart';
 
 class MyImportsScreen extends StatefulWidget {
   const MyImportsScreen({super.key});
@@ -22,39 +23,25 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
   /// Which text‐based “tags” (city/country/name/address‐fragments) are currently applied
   final Set<String> _appliedFilters = {};
 
-  // Open a dialog to create a brand‐new folder (board)
-  void _showCreateFolderDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("New Folder"),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(hintText: "Folder name"),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final name = controller.text.trim();
-                  if (name.isNotEmpty && !_boardNames.contains(name)) {
-                    setState(() {
-                      _boardNames.add(name);
-                      _customBoards[name] = [];
-                    });
-                  }
-                  Navigator.pop(context);
-                },
-                child: const Text("Create"),
-              ),
-            ],
-          ),
-    );
+  bool _isLoadingImports = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedImports();
+  }
+
+  Future<void> _loadPersistedImports() async {
+    setState(() => _isLoadingImports = true);
+    try {
+      await ImportService.instance.loadFromFirestore();
+    } catch (e) {
+      debugPrint('Failed to load imports from Firestore: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingImports = false);
+      }
+    }
   }
 
   // Prompt user to pick an existing folder or create a new one,
@@ -144,6 +131,10 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
   }
 
   Widget _buildBoardContent(String board) {
+    if (_isLoadingImports) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     // Build a map of “board name → list of pins.”  “All Locations” always
     // points to the ImportService’s master importedLocations list.
     final Map<String, List<Map<String, dynamic>>> folders = {
@@ -233,6 +224,11 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                 final pin = filteredPins[index];
                 final pinName = pin['name'] as String? ?? 'Unknown';
                 final pinAddress = pin['address'] as String? ?? '';
+                final thumbUrl = (pin['thumbnailUrl'] as String? ?? '').trim();
+                final hasThumb =
+                    thumbUrl.isNotEmpty &&
+                    (thumbUrl.startsWith('http://') ||
+                        thumbUrl.startsWith('https://'));
                 double? lat;
                 double? lng;
                 try {
@@ -263,37 +259,12 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                             }
                           });
                         } else if (!_isSelectionMode) {
-                          // Tapping a pin navigates to map with only that single pin
-                          if (lat != null && lng != null) {
-                            debugPrint("Navigating to map with: $lat, $lng");
-                            ImportService.instance.clearAll();
-                            ImportService.instance.addLocations([
-                              {
-                                'name': pinName,
-                                'address': pinAddress,
-                                'lat': lat,
-                                'lng': lng,
-                              },
-                            ]);
-                            try {
-                              Navigator.pushNamed(
-                                context,
-                                '/map',
-                                arguments: {
-                                  'fromImports': true,
-                                  // 'showDoneButton': true,
-                                  'showBackToImportButton': true,
-                                },
-                              );
-                            } catch (e, stack) {
-                              debugPrint("Navigation error: $e");
-                              debugPrint("Stack trace: $stack");
-                            }
-                          } else {
-                            debugPrint(
-                              "Lat/Lng is null, cannot navigate to map.",
-                            );
-                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ImportPostScreen(pin: pin),
+                            ),
+                          );
                         }
                       },
                       child: Card(
@@ -306,19 +277,52 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Placeholder thumbnail box
-                              Container(
+                              SizedBox(
                                 height: 100,
                                 width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
+                                child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.play_circle_outline,
-                                  size: 40,
-                                  color: Colors.grey,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      if (hasThumb)
+                                        Image.network(
+                                          thumbUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) {
+                                            return Container(
+                                              color: Colors.grey[300],
+                                              alignment: Alignment.center,
+                                              child: const Icon(
+                                                Icons.image_not_supported,
+                                                color: Colors.grey,
+                                                size: 30,
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      else
+                                        Container(
+                                          color: Colors.grey[300],
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            Icons.image,
+                                            color: Colors.grey,
+                                            size: 30,
+                                          ),
+                                        ),
+                                      Container(
+                                        color: Colors.black.withAlpha(40),
+                                      ),
+                                      const Center(
+                                        child: Icon(
+                                          Icons.play_circle_filled,
+                                          size: 38,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -387,14 +391,6 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Build a map of “board name → list of pins.”  “All Locations” always
-    // points to the ImportService’s master importedLocations list.
-    final Map<String, List<Map<String, dynamic>>> folders = {
-      "All Locations": ImportService.instance.importedLocations,
-      ..._customBoards,
-    };
-    final boardNames = folders.keys.toList();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
