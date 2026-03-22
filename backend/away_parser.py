@@ -5,7 +5,10 @@ import spacy
 import os
 import traceback
 import re
+import uuid
+from urllib.parse import quote
 from dotenv import load_dotenv
+from google.cloud import storage
 
 router = APIRouter(prefix="/api")
 
@@ -14,6 +17,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 GOOGLE_API_KEY = os.getenv("BACKEND_GOOGLE_API_KEY") or os.getenv("GOOGLE_MAPS_API_KEY")
 APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
+FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET") or os.getenv("STORAGE_BUCKET")
 if not GOOGLE_API_KEY:
     raise RuntimeError("Missing BACKEND_GOOGLE_API_KEY or GOOGLE_MAPS_API_KEY in environment")
 if not APIFY_API_TOKEN:
@@ -133,6 +137,60 @@ def get_post_data(url: str) -> dict:
         "sourceUrl": url,
     }
 
+
+def _upload_thumbnail_to_firebase_storage(
+    thumbnail_url: str,
+    source_url: str,
+) -> dict | None:
+    """Download thumbnail from source and upload it to Firebase Storage.
+
+    Returns {
+      "thumbnailStoragePath": str,
+      "thumbnailUrl": str
+    } or None on failure.
+    """
+    if not thumbnail_url or not FIREBASE_STORAGE_BUCKET:
+        return None
+
+    try:
+        resp = requests.get(thumbnail_url, timeout=20)
+        if resp.status_code != 200 or not resp.content:
+            return None
+
+        content_type = resp.headers.get("Content-Type", "image/jpeg")
+        ext = "jpg"
+        if "png" in content_type:
+            ext = "png"
+        elif "webp" in content_type:
+            ext = "webp"
+
+        shortcode = extract_shortcode(source_url)
+        file_id = shortcode or str(uuid.uuid4())
+        object_path = f"thumbnails/instagram/{file_id}.{ext}"
+
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(FIREBASE_STORAGE_BUCKET)
+        blob = bucket.blob(object_path)
+
+        # Add Firebase-style download token metadata so app can fetch via URL.
+        token = str(uuid.uuid4())
+        blob.metadata = {
+            "firebaseStorageDownloadTokens": token,
+        }
+        blob.upload_from_string(resp.content, content_type=content_type)
+
+        encoded_path = quote(object_path, safe="")
+        download_url = (
+            f"https://firebasestorage.googleapis.com/v0/b/{FIREBASE_STORAGE_BUCKET}"
+            f"/o/{encoded_path}?alt=media&token={token}"
+        )
+        return {
+            "thumbnailStoragePath": object_path,
+            "thumbnailUrl": download_url,
+        }
+    except Exception:
+        return None
+
 def get_location_data(text: str) -> list[str]:
     """
     Extract likely place mentions from caption using spaCy NER and simple grouping.
@@ -246,10 +304,25 @@ def parse_instagram_post(req: ParseRequest):
         names = get_location_data(caption)
         geocoded = [g for g in (geocode_name(n) for n in names) if g]
         unique = dedupe_locations(geocoded)
+
+        uploaded_thumb = None
+        if post.get("thumbnailUrl"):
+            uploaded_thumb = _upload_thumbnail_to_firebase_storage(
+                post.get("thumbnailUrl"),
+                req.url,
+            )
+
         return {
             "caption": caption,
             "videoUrl": post.get("videoUrl") or req.url,
-            "thumbnailUrl": post.get("thumbnailUrl"),
+            "thumbnailUrl": (
+                uploaded_thumb.get("thumbnailUrl")
+                if uploaded_thumb
+                else post.get("thumbnailUrl")
+            ),
+            "thumbnailStoragePath": (
+                uploaded_thumb.get("thumbnailStoragePath") if uploaded_thumb else None
+            ),
             "sourceUrl": post.get("sourceUrl") or req.url,
             "locations": unique,
         }

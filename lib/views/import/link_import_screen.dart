@@ -106,6 +106,10 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
                   result['thumbnail'])
               ?.toString()
               .trim();
+      final thumbnailStoragePath =
+          (result['thumbnailStoragePath'] ?? result['thumbnail_storage_path'])
+              ?.toString()
+              .trim();
       if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
         thumbnailUrl = await _apiService.tryFetchInstagramThumbnail(url);
       }
@@ -133,6 +137,7 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
                 locations: locations,
                 videoUrl: videoUrl,
                 thumbnailUrl: thumbnailUrl,
+                thumbnailStoragePath: thumbnailStoragePath,
                 sourceUrl: url,
               ),
         ),

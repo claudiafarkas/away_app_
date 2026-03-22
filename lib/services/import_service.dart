@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 
 class ImportService {
@@ -59,6 +60,8 @@ class ImportService {
           'lng': lng,
           'videoUrl': loc['videoUrl'] ?? loc['video_url'],
           'thumbnailUrl': loc['thumbnailUrl'] ?? loc['thumbnail_url'],
+          'thumbnailStoragePath':
+              loc['thumbnailStoragePath'] ?? loc['thumbnail_storage_path'],
           'sourceUrl': loc['sourceUrl'] ?? loc['source_url'],
           'caption': loc['caption'],
           'createdAt': loc['createdAt'],
@@ -88,6 +91,8 @@ class ImportService {
         'lng': lng,
         'videoUrl': loc['videoUrl'] ?? loc['video_url'],
         'thumbnailUrl': loc['thumbnailUrl'] ?? loc['thumbnail_url'],
+        'thumbnailStoragePath':
+            loc['thumbnailStoragePath'] ?? loc['thumbnail_storage_path'],
         'sourceUrl': loc['sourceUrl'] ?? loc['source_url'],
         'caption': loc['caption'],
         'updatedAt': now,
@@ -118,6 +123,7 @@ class ImportService {
             'lng': data['lng'],
             'videoUrl': data['videoUrl'] ?? data['sourceUrl'],
             'thumbnailUrl': data['thumbnailUrl'],
+            'thumbnailStoragePath': data['thumbnailStoragePath'],
             'sourceUrl': data['sourceUrl'],
             'caption': data['caption'],
             'createdAt': data['createdAt'],
@@ -128,6 +134,28 @@ class ImportService {
     for (final item in loaded) {
       final existingThumb = (item['thumbnailUrl'] as String? ?? '').trim();
       if (existingThumb.isNotEmpty) continue;
+
+      final storagePath =
+          (item['thumbnailStoragePath'] as String? ?? '').trim();
+      if (storagePath.isNotEmpty) {
+        try {
+          final downloadUrl =
+              await FirebaseStorage.instance.ref(storagePath).getDownloadURL();
+          if (downloadUrl.isNotEmpty) {
+            item['thumbnailUrl'] = downloadUrl;
+            final docId = (item['docId'] as String?)?.trim();
+            if (docId != null && docId.isNotEmpty) {
+              await imports.doc(docId).set({
+                'thumbnailUrl': downloadUrl,
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+            }
+            continue;
+          }
+        } catch (_) {
+          // Keep fallback strategy below.
+        }
+      }
 
       final videoUrl = (item['videoUrl'] as String? ?? '').trim();
       if (videoUrl.isEmpty) continue;

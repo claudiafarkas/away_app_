@@ -90,24 +90,30 @@ class ImportPostScreen extends StatelessWidget {
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) {
                                 return Container(
-                                  color: Colors.grey[300],
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    size: 34,
-                                    color: Colors.grey,
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFFDDEAF1),
+                                        Color(0xFFBFD4E2),
+                                      ],
+                                    ),
                                   ),
                                 );
                               },
                             )
                           else
                             Container(
-                              color: Colors.grey[300],
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.image,
-                                size: 34,
-                                color: Colors.grey,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFDDEAF1),
+                                    Color(0xFFBFD4E2),
+                                  ],
+                                ),
                               ),
                             ),
                           Container(color: Colors.black.withAlpha(55)),

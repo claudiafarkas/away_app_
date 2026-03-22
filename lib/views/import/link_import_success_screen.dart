@@ -9,6 +9,7 @@ class ImportSuccessScreen extends StatefulWidget {
   final List<Map<String, dynamic>> locations;
   final String? videoUrl;
   final String? thumbnailUrl;
+  final String? thumbnailStoragePath;
   final String? sourceUrl;
 
   const ImportSuccessScreen({
@@ -17,6 +18,7 @@ class ImportSuccessScreen extends StatefulWidget {
     required this.locations,
     this.videoUrl,
     this.thumbnailUrl,
+    this.thumbnailStoragePath,
     this.sourceUrl,
   });
 
@@ -265,6 +267,8 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                                                     : (lng as num).toDouble(),
                                             'videoUrl': widget.videoUrl,
                                             'thumbnailUrl': widget.thumbnailUrl,
+                                            'thumbnailStoragePath':
+                                                widget.thumbnailStoragePath,
                                             'sourceUrl': widget.sourceUrl,
                                             'caption': widget.caption,
                                           };

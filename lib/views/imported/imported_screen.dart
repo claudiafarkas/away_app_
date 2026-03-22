@@ -238,7 +238,6 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                   lat = null;
                   lng = null;
                 }
-
                 final isSelectable =
                     _isSelectionMode &&
                     (board == "All Locations") &&
@@ -291,24 +290,30 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) {
                                             return Container(
-                                              color: Colors.grey[300],
-                                              alignment: Alignment.center,
-                                              child: const Icon(
-                                                Icons.image_not_supported,
-                                                color: Colors.grey,
-                                                size: 30,
+                                              decoration: const BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    Color(0xFFDDEAF1),
+                                                    Color(0xFFBFD4E2),
+                                                  ],
+                                                ),
                                               ),
                                             );
                                           },
                                         )
                                       else
                                         Container(
-                                          color: Colors.grey[300],
-                                          alignment: Alignment.center,
-                                          child: const Icon(
-                                            Icons.image,
-                                            color: Colors.grey,
-                                            size: 30,
+                                          decoration: const BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                Color(0xFFDDEAF1),
+                                                Color(0xFFBFD4E2),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       Container(

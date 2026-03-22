@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:away/services/import_service.dart';
 import '../imported/imported_screen.dart';
-import 'feed_tab_screen.dart';
 
 class MyHomeScreen extends StatelessWidget {
   const MyHomeScreen({super.key});
@@ -86,17 +86,44 @@ class MyHomeScreen extends StatelessWidget {
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      itemCount: 10,
+                      itemCount:
+                          ImportService.instance.importedLocations.isEmpty
+                              ? 10
+                              : ImportService.instance.importedLocations.length,
                       itemBuilder: (context, index) {
+                        final imported =
+                            ImportService.instance.importedLocations;
+                        final hasImported = imported.isNotEmpty;
+                        final pin =
+                            hasImported
+                                ? imported[index % imported.length]
+                                : <String, dynamic>{};
+                        final pinName =
+                            hasImported
+                                ? (pin['name'] as String? ?? 'Unknown')
+                                : 'Location ${index + 1}';
+                        final pinAddress =
+                            hasImported
+                                ? (pin['address'] as String? ?? '')
+                                : 'Sample Address, City, Country';
+                        final thumbUrl =
+                            hasImported
+                                ? (pin['thumbnailUrl'] as String? ?? '').trim()
+                                : '';
+                        final hasThumb =
+                            thumbUrl.isNotEmpty &&
+                            (thumbUrl.startsWith('http://') ||
+                                thumbUrl.startsWith('https://'));
+                        final lat =
+                            hasImported && pin['lat'] is num
+                                ? (pin['lat'] as num).toDouble()
+                                : 21.00;
+                        final lng =
+                            hasImported && pin['lng'] is num
+                                ? (pin['lng'] as num).toDouble()
+                                : -86.00;
                         final heights = [240.0, 280.0, 260.0, 300.0, 250.0];
                         final height = heights[index % heights.length];
-                        Text(
-                          'Feed',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
                         return Container(
                           height: height,
                           padding: const EdgeInsets.all(12),
@@ -116,29 +143,68 @@ class MyHomeScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  height: height * 0.45,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.play_circle_filled,
-                                      color: Colors.grey,
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: SizedBox(
+                                    height: height * 0.45,
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        if (hasThumb)
+                                          Image.network(
+                                            thumbUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) {
+                                              return Container(
+                                                decoration: const BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      Color(0xFFDDEAF1),
+                                                      Color(0xFFBFD4E2),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        else
+                                          Container(
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [
+                                                  Color(0xFFDDEAF1),
+                                                  Color(0xFFBFD4E2),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        Container(
+                                          color: Colors.black.withAlpha(35),
+                                        ),
+                                        const Center(
+                                          child: Icon(
+                                            Icons.play_circle_filled,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Location ${index + 1}',
+                                  pinName,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
                                 ),
                                 Text(
-                                  'Sample Address, City, Country',
+                                  pinAddress,
                                   style: TextStyle(
                                     color: Colors.blue[900],
                                     fontSize: 13,
@@ -147,12 +213,12 @@ class MyHomeScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
-                                  children: const [
-                                    Icon(Icons.map, size: 14),
-                                    SizedBox(width: 4),
+                                  children: [
+                                    const Icon(Icons.map, size: 14),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      '21.00, -86.00',
-                                      style: TextStyle(fontSize: 12),
+                                      '${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)}',
+                                      style: const TextStyle(fontSize: 12),
                                     ),
                                   ],
                                 ),
