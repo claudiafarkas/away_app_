@@ -130,6 +130,32 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
     );
   }
 
+  void _deletePin(Map<String, dynamic> pin) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('Delete Import'),
+            content: const Text('Are you sure you want to remove this import?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await ImportService.instance.deleteLocation(pin);
+                  if (mounted) setState(() {});
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+  }
+
   Widget _buildBoardContent(String board) {
     if (_isLoadingImports) {
       return const Center(child: CircularProgressIndicator());
@@ -382,6 +408,26 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                               }
                             });
                           },
+                        ),
+                      ),
+                    if (!_isSelectionMode)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () => _deletePin(pin),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
                       ),
                   ],

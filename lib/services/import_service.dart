@@ -198,4 +198,28 @@ class ImportService {
   void clearAll() {
     _importedLocations.clear();
   }
+
+  Future<void> deleteLocation(Map<String, dynamic> loc) async {
+    _importedLocations.removeWhere(
+      (e) =>
+          e['name'] == loc['name'] &&
+          e['lat'] == loc['lat'] &&
+          e['lng'] == loc['lng'],
+    );
+    final imports = _importsCollection;
+    if (imports == null) return;
+    final docId = (loc['docId'] as String?)?.trim();
+    if (docId != null && docId.isNotEmpty) {
+      await imports.doc(docId).delete();
+    } else {
+      await imports.doc(_docIdFor(loc)).delete();
+    }
+  }
+
+  bool isDuplicateUrl(String url) {
+    final trimmed = url.trim();
+    return _importedLocations.any(
+      (loc) => (loc['sourceUrl'] as String? ?? '').trim() == trimmed,
+    );
+  }
 }

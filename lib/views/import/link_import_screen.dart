@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import '../import/link_import_success_screen.dart';
 import 'package:away/services/api_service.dart';
+import 'package:away/services/import_service.dart';
 
 class ImportLinkScreen extends StatefulWidget {
   const ImportLinkScreen({super.key});
@@ -84,6 +85,27 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
 
     debugPrint('📤 Sending raw input: "$rawInput"');
     debugPrint('📤 Sending cleaned URL to API: "$url"');
+
+    // Duplicate check
+    if (ImportService.instance.isDuplicateUrl(url)) {
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('Already Imported!'),
+              content: const Text(
+                "Oops! You've already imported this video. Try another one!",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     _startFakeProgress();
