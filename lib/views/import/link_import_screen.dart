@@ -23,6 +23,16 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
   Timer? _progressTimer;
   final RegExp _igRegex = RegExp(r'https?://(www\.)?instagram\.com/\S+');
 
+  String _normalizeInstagramUrl(String url) {
+    final parsed = Uri.tryParse(url.trim());
+    if (parsed == null) return url.trim();
+    return Uri(
+      scheme: parsed.scheme,
+      host: parsed.host,
+      path: parsed.path,
+    ).toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -73,7 +83,7 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
     final rawInput = _urlController.text.trim();
     // Extract the first valid Instagram URL from the input
     final match = _igRegex.firstMatch(rawInput);
-    final url = match?.group(0) ?? '';
+    final url = _normalizeInstagramUrl(match?.group(0) ?? '');
     debugPrint('✅ Cleaned URL: "$url"');
     if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

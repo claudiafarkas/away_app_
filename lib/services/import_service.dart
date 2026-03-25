@@ -36,6 +36,13 @@ class ImportService {
     return key.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
   }
 
+  String? _extractInstagramShortcode(String url) {
+    final match = RegExp(
+      r'(?:/reel/|/p/|/tv/)([A-Za-z0-9_-]{5,})',
+    ).firstMatch(url);
+    return match?.group(1);
+  }
+
   /// Returns a read‐only view of all imported locations.
   List<Map<String, dynamic>> get importedLocations =>
       List.unmodifiable(_importedLocations);
@@ -218,8 +225,18 @@ class ImportService {
 
   bool isDuplicateUrl(String url) {
     final trimmed = url.trim();
-    return _importedLocations.any(
-      (loc) => (loc['sourceUrl'] as String? ?? '').trim() == trimmed,
-    );
+    final incomingShortcode = _extractInstagramShortcode(trimmed);
+    return _importedLocations.any((loc) {
+      final sourceUrl = (loc['sourceUrl'] as String? ?? '').trim();
+      if (sourceUrl == trimmed) {
+        return true;
+      }
+      if (incomingShortcode == null) {
+        return false;
+      }
+      final existingShortcode = _extractInstagramShortcode(sourceUrl);
+      return existingShortcode != null &&
+          existingShortcode == incomingShortcode;
+    });
   }
 }

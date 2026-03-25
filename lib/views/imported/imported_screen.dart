@@ -146,7 +146,18 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                 onPressed: () async {
                   Navigator.pop(context);
                   await ImportService.instance.deleteLocation(pin);
-                  if (mounted) setState(() {});
+                  if (mounted) {
+                    setState(() {
+                      for (final board in _customBoards.values) {
+                        board.removeWhere(
+                          (item) =>
+                              item['name'] == pin['name'] &&
+                              item['lat'] == pin['lat'] &&
+                              item['lng'] == pin['lng'],
+                        );
+                      }
+                    });
+                  }
                 },
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                 child: const Text('Delete'),
