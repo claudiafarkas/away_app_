@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:away/services/import_service.dart';
 
@@ -6,6 +7,39 @@ class ImportPostScreen extends StatelessWidget {
   final Map<String, dynamic> pin;
 
   const ImportPostScreen({super.key, required this.pin});
+
+  Future<void> _shareImport(
+    BuildContext context, {
+    required String name,
+    required String address,
+    required String sourceUrl,
+  }) async {
+    final cleanName = name.trim();
+    final cleanAddress = address.trim();
+    final cleanUrl = sourceUrl.trim();
+
+    final message = [
+      if (cleanName.isNotEmpty) 'Saved in Away: $cleanName',
+      if (cleanAddress.isNotEmpty) cleanAddress,
+      if (cleanUrl.isNotEmpty) cleanUrl,
+    ].join('\n');
+
+    if (message.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nothing to share for this post yet.')),
+        );
+      }
+      return;
+    }
+
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      message,
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
+  }
 
   Future<void> _openOriginalVideo(BuildContext context, String? rawUrl) async {
     final url = (rawUrl ?? '').trim();
@@ -41,10 +75,11 @@ class ImportPostScreen extends StatelessWidget {
     final name = (pin['name'] as String? ?? 'Imported Post').trim();
     final address = (pin['address'] as String? ?? '').trim();
     final caption = (pin['caption'] as String? ?? '').trim();
+    final sourceUrl = (pin['sourceUrl'] as String? ?? '').trim();
     final videoUrl =
         ((pin['videoUrl'] as String?)?.trim().isNotEmpty ?? false)
             ? (pin['videoUrl'] as String).trim()
-            : (pin['sourceUrl'] as String? ?? '').trim();
+            : sourceUrl;
     final thumbUrl = (pin['thumbnailUrl'] as String? ?? '').trim();
     final hasThumb =
         thumbUrl.isNotEmpty &&
@@ -68,6 +103,19 @@ class ImportPostScreen extends StatelessWidget {
           ),
         ),
         iconTheme: const IconThemeData(color: Color(0xFF062D40)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            color: const Color(0xFF062D40),
+            onPressed:
+                () => _shareImport(
+                  context,
+                  name: name,
+                  address: address,
+                  sourceUrl: sourceUrl,
+                ),
+          ),
+        ],
       ),
       body: Column(
         children: [

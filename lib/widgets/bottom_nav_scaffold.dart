@@ -4,31 +4,72 @@ import '../views/import/link_import_screen.dart';
 import '../views/map/map_screen.dart';
 import '../views/calendar/calendar_screen.dart';
 import '../views/profile/profile_screen.dart';
+import '../services/share_intent_service.dart';
 
 class BottomNavScaffold extends StatefulWidget {
   final int initialIndex;
+  final String? initialImportUrl;
 
-  const BottomNavScaffold({super.key, this.initialIndex = 0});
+  const BottomNavScaffold({
+    super.key,
+    this.initialIndex = 0,
+    this.initialImportUrl,
+  });
 
   @override
   State<BottomNavScaffold> createState() => _BottomNavScaffoldState();
 }
 
-class _BottomNavScaffoldState extends State<BottomNavScaffold> {
+class _BottomNavScaffoldState extends State<BottomNavScaffold>
+    with WidgetsBindingObserver {
   late int _currentIndex;
+  String? _pendingImportUrl;
 
-  final List<Widget> _pages = [
-    MyHomeScreen(),
-    ImportLinkScreen(),
-    MapScreen(),
-    CalendarScreen(),
-    ProfileScreen(),
-  ];
+  List<Widget> _buildPages() {
+    return [
+      MyHomeScreen(),
+      ImportLinkScreen(initialUrl: _pendingImportUrl),
+      MapScreen(),
+      CalendarScreen(),
+      ProfileScreen(),
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentIndex = widget.initialIndex;
+    _pendingImportUrl = widget.initialImportUrl;
+    if ((_pendingImportUrl ?? '').isNotEmpty) {
+      _currentIndex = 1;
+    }
+    _consumePendingSharedUrl();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _consumePendingSharedUrl();
+    }
+  }
+
+  Future<void> _consumePendingSharedUrl() async {
+    await ShareIntentService.instance.refreshFromNative();
+    final sharedUrl = ShareIntentService.instance.consumeSharedUrl();
+    if (!mounted) return;
+    if (sharedUrl != null && sharedUrl.trim().isNotEmpty) {
+      setState(() {
+        _pendingImportUrl = sharedUrl.trim();
+        _currentIndex = 1;
+      });
+    }
   }
 
   @override
@@ -38,7 +79,7 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
       extendBody: true,
       body: Stack(
         children: [
-          _pages[_currentIndex],
+          _buildPages()[_currentIndex],
           Positioned(
             left: 56,
             right: 56,

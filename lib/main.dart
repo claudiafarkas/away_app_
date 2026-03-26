@@ -4,11 +4,9 @@ import 'package:away/views/imported/imported_screen.dart';
 import 'package:away/views/map/map_screen.dart';
 import 'package:away/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:away/views/import/manual_import_screen.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:away/services/share_intent_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +42,8 @@ Future<void> main() async {
   } catch (e) {
     print("❌ Remote Config failed: $e");
   }
+
+  await ShareIntentService.instance.refreshFromNative();
 
   runApp(const MyApp());
 }

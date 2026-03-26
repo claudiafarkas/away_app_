@@ -6,7 +6,9 @@ import 'package:away/services/api_service.dart';
 import 'package:away/services/import_service.dart';
 
 class ImportLinkScreen extends StatefulWidget {
-  const ImportLinkScreen({super.key});
+  final String? initialUrl;
+
+  const ImportLinkScreen({super.key, this.initialUrl});
 
   @override
   State<ImportLinkScreen> createState() => _ImportLinkScreenState();
@@ -38,6 +40,20 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
     super.initState();
     // Removed automatic clipboard reading on init - will only happen when user taps paste button
     _urlController.addListener(() => setState(() {}));
+    final initialUrl = widget.initialUrl?.trim();
+    if (initialUrl != null && initialUrl.isNotEmpty) {
+      _urlController.text = initialUrl;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ImportLinkScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previous = oldWidget.initialUrl?.trim() ?? '';
+    final next = widget.initialUrl?.trim() ?? '';
+    if (next.isNotEmpty && next != previous) {
+      _urlController.text = next;
+    }
   }
 
   @override

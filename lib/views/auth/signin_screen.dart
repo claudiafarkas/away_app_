@@ -5,6 +5,7 @@ import 'package:away/views/auth/signup_screen.dart';
 import 'package:away/widgets/bottom_nav_scaffold.dart';
 import 'package:away/services/auth_service.dart';
 import 'package:away/services/import_service.dart';
+import 'package:away/services/share_intent_service.dart';
 // import 'package:away/views/auth/widgets/social_signin_button.dart';
 // import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -73,9 +74,16 @@ class _SignInScreenState extends State<SignInScreen> {
         password: _passwordController.text.trim(),
       );
       await ImportService.instance.loadFromFirestore();
+      final sharedUrl = ShareIntentService.instance.consumeSharedUrl();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+        MaterialPageRoute(
+          builder:
+              (_) => BottomNavScaffold(
+                initialIndex: (sharedUrl ?? '').isNotEmpty ? 1 : 0,
+                initialImportUrl: sharedUrl,
+              ),
+        ),
       );
     } on FirebaseAuthException catch (e) {
       _showErrorDialog(_getFriendlyErrorMessage(e));
@@ -172,10 +180,20 @@ class _SignInScreenState extends State<SignInScreen> {
                               if (userCred?.user != null) {
                                 await ImportService.instance
                                     .loadFromFirestore();
+                                final sharedUrl =
+                                    ShareIntentService.instance
+                                        .consumeSharedUrl();
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const BottomNavScaffold(),
+                                    builder:
+                                        (_) => BottomNavScaffold(
+                                          initialIndex:
+                                              (sharedUrl ?? '').isNotEmpty
+                                                  ? 1
+                                                  : 0,
+                                          initialImportUrl: sharedUrl,
+                                        ),
                                   ),
                                 );
                               } else {
