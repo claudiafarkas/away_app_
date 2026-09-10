@@ -16,60 +16,40 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final instance = AuthService._();
 
-  // final _googleSignIn = GoogleSignIn(
-  //   clientId: FirebaseRemoteConfig.instance.getString('IOS_CLIENT_ID'),
-  //   scopes: ['email'],
-  // );
-  final _googleSignIn = GoogleSignIn(scopes: ['email']);
+  // iOS client ID lives in Info.plist as GIDClientID (passing it here from
+  // Remote Config at construct time is what used to break sign-in).
+  // serverClientId is the Web OAuth client, needed for a Firebase ID token.
+  final _googleSignIn = GoogleSignIn(
+    scopes: const ['email'],
+    serverClientId:
+        '975056194033-oloek9p28ju7h6bn6nvk5f915o70h8ri.apps.googleusercontent.com',
+  );
 
   final _auth = FirebaseAuth.instance;
   final _secureStorage = const FlutterSecureStorage();
 
-  // Commented out bc it kep causing issues
-  // Future<UserCredential?> signInWithGoogle() async {
-  //   try {
-  //     print("🚀 Starting Google Sign In...");
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
 
-  //     // Try sign in
-  //     final googleUser = await _googleSignIn.signIn().catchError((error) {
-  //       print("❌ GoogleSignIn.signIn() error: $error");
-  //       throw error;
-  //     });
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-  //     if (googleUser == null) {
-  //       print("⚠️ User cancelled sign in");
-  //       return null;
-  //     }
-
-  //     // Get auth details
-  //     final googleAuth = await googleUser.authentication.catchError((error) {
-  //       print("❌ Authentication error: $error");
-  //       throw error;
-  //     });
-
-  //     // Create credential
-  //     final credential = GoogleAuthProvider.credential(
-  //       accessToken: googleAuth.accessToken,
-  //       idToken: googleAuth.idToken,
-  //     );
-
-  //     // Sign in to Firebase
-  //     print("⚙️ Signing in to Firebase...");
-  //     final userCredential = await _auth.signInWithCredential(credential);
-  //     print("✅ Firebase sign in successful: ${userCredential.user?.uid}");
-
-  //     // Save user data
-  //     if (userCredential.user != null) {
-  //       await saveUserToFirestore(userCredential.user!);
-  //     }
-
-  //     return userCredential;
-  //   } catch (e, stack) {
-  //     print("❌ Google Sign In failed: $e");
-  //     print("Stack trace: $stack");
-  //     throw e; // Rethrow to let UI handle it
-  //   }
-  // }
+      final userCredential = await _auth.signInWithCredential(credential);
+      if (userCredential.user != null) {
+        await saveUserToFirestore(userCredential.user!);
+      }
+      return userCredential;
+    } catch (e, stack) {
+      print("❌ Google Sign In failed: $e");
+      print("Stack trace: $stack");
+      rethrow;
+    }
+  }
 
   Future<UserCredential?> signInWithApple() async {
     try {

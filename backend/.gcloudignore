@@ -1,0 +1,16 @@
+# Don’t upload local environment secrets
+.env
+
+# Common ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.db
+*.sqlite
+*.log
+
+# Optional: Git and macOS junk
+.git/
+.DS_Store

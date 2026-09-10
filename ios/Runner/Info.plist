@@ -43,6 +43,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>1091910357414-sjd7e974nmsg4oklf9e6sj84nhk13hdl.apps.googleusercontent.com</string>
+	<key>GMSApiKey</key>
+	<string>$(GMS_API_KEY)</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSApplicationQueriesSchemes</key>

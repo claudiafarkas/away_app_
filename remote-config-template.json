@@ -1,0 +1,19 @@
+{
+  "parameters": {
+    "IOS_CLIENT_ID": {
+      "defaultValue": {
+        "value": "1091910357414-sjd7e974nmsg4oklf9e6sj84nhk13hdl.apps.googleusercontent.com"
+      }
+    },
+    "GOOGLE_CLIENT_ID": {
+      "defaultValue": {
+        "value": "975056194033-oloek9p28ju7h6bn6nvk5f915o70h8ri.apps.googleusercontent.com"
+      }
+    },
+    "API_URL": {
+      "defaultValue": {
+        "value": "https://away-backend-975056194033.us-central1.run.app"
+      }
+    }
+  }
+}

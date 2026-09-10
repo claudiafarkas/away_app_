@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../import/link_import_success_screen.dart';
 import 'package:away/services/api_service.dart';
 import 'package:away/services/import_service.dart';
+import 'package:away/theme/app_colors.dart';
+import 'package:away/widgets/soft_tile.dart';
 
 class ImportLinkScreen extends StatefulWidget {
   final String? initialUrl;
@@ -215,189 +217,159 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const accentColor = Color(0xFF062D40);
     final bool canImport =
         _igRegex.hasMatch(_urlController.text.trim()) && !_isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Import Video',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.black54),
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Paste your Instagram link below',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'We\'ll extract any places mentioned and place them on your map!',
-                  style: TextStyle(fontSize: 13, color: Colors.black54),
-                ),
-                const SizedBox(height: 16),
-                // URL Input Field
-                Material(
-                  elevation: 1,
-                  borderRadius: BorderRadius.circular(12),
-                  child: TextField(
-                    controller: _urlController,
-                    style: const TextStyle(color: Colors.black87),
-                    decoration: InputDecoration(
-                      hintText: "https://www.instagram.com/...",
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.link_rounded,
-                        color: Colors.black54,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_urlController.text.isNotEmpty)
-                            IconButton(
-                              tooltip: 'Clear',
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed:
-                                  () => setState(() => _urlController.clear()),
-                            ),
-                          TextButton(
-                            onPressed: () async {
-                              if (_clipboardUrl == null)
-                                await _primeClipboard();
-                              if (_clipboardUrl != null) {
-                                setState(
-                                  () => _urlController.text = _clipboardUrl!,
-                                );
-                              }
-                            },
-                            child: const Text('Paste'),
-                          ),
-                        ],
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: accentColor, width: 1.5),
-                      ),
-                    ),
-                    keyboardType: TextInputType.url,
-                  ),
-                ),
-                if (_clipboardUrl != null && _urlController.text.isEmpty) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      onPressed:
-                          () => setState(
-                            () => _urlController.text = _clipboardUrl!,
-                          ),
-                      icon: const Icon(Icons.content_paste_rounded, size: 18),
-                      label: const Text('Paste from clipboard'),
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: canImport ? _handleImport : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 2,
-                  ),
-                  child:
-                      _isLoading
-                          ? Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: const CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '${(_progress * 100).clamp(0, 100).round()}%  Parsing…',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          )
-                          : const Text(
-                            'Import',
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 128),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              SoftTile(
+                gradient: AppColors.featuredGradients[1],
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Instagram to map pins',
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
                             ),
                           ),
+                        ),
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          color: AppColors.inkDeep,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Drop a video link. Away extracts locations and lays them onto your map.',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        height: 1.4,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-                if (_isLoading) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: _progress == 0.0 ? null : _progress,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
-                      color: accentColor,
+              ),
+              const SizedBox(height: 16),
+              SoftTile(
+                padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                child: TextField(
+                  controller: _urlController,
+                  style: const TextStyle(color: AppColors.ink),
+                  decoration: InputDecoration(
+                    hintText: 'https://www.instagram.com/...',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    prefixIcon: const Icon(
+                      Icons.link_rounded,
+                      color: AppColors.muted,
+                    ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_urlController.text.isNotEmpty)
+                          IconButton(
+                            tooltip: 'Clear',
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed:
+                                () => setState(() => _urlController.clear()),
+                          ),
+                        TextButton(
+                          onPressed: () async {
+                            if (_clipboardUrl == null) await _primeClipboard();
+                            if (_clipboardUrl != null) {
+                              setState(
+                                () => _urlController.text = _clipboardUrl!,
+                              );
+                            }
+                          },
+                          child: const Text('Paste'),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'We\'re parsing your link…',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade600),
+                  keyboardType: TextInputType.url,
+                ),
+              ),
+              if (_clipboardUrl != null && _urlController.text.isEmpty) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        () =>
+                            setState(() => _urlController.text = _clipboardUrl!),
+                    icon: const Icon(Icons.content_paste_rounded, size: 18),
+                    label: const Text('Paste from clipboard'),
                   ),
-                ],
+                ),
               ],
-            ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: canImport ? _handleImport : null,
+                child:
+                    _isLoading
+                        ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${(_progress * 100).clamp(0, 100).round()}%  Parsing…',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )
+                        : const Text('Import'),
+              ),
+              if (_isLoading) ...[
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: _progress == 0.0 ? null : _progress,
+                    minHeight: 8,
+                    backgroundColor: AppColors.sky,
+                    color: AppColors.inkDeep,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Parsing your link…',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.muted),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

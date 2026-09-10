@@ -78,6 +78,9 @@ android/app/build/
 
 #Firebase keys
 **/firebase_options.dart
+**/google-services.json
+**/GoogleService-Info.plist
+ios/Flutter/Secrets.xcconfig
 
 # iOS build artifacts (Pod build caches)
 ios/Flutter/Flutter.framework/

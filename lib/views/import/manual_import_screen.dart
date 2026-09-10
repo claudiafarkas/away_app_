@@ -3,7 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:away/services/api_service.dart';
-import 'package:away/views/import/link_import_success_screen.dart';
+import 'package:away/theme/app_colors.dart';
+import 'package:away/widgets/cloud_backdrop.dart';
+import 'package:away/widgets/soft_tile.dart';
 
 class ManualImportScreen extends StatefulWidget {
   const ManualImportScreen({super.key});
@@ -85,26 +87,25 @@ class _ManualImportScreenState extends State<ManualImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Import Manually")),
+    return CloudScaffold(
+      appBar: AppBar(title: const Text('Import manually')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              const Text(
-                "Fill in the details to manually add a location.",
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+              SoftTile(
+                gradient: AppColors.featuredGradients[2],
+                child: const Text(
+                  'Fill in a place and we’ll try to drop it on the map.',
+                  style: TextStyle(color: AppColors.muted, height: 1.4),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: "Location Name",
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Location name'),
                 validator:
                     (val) =>
                         val == null || val.trim().isEmpty ? 'Required' : null,
@@ -113,18 +114,14 @@ class _ManualImportScreenState extends State<ManualImportScreen> {
               TextFormField(
                 controller: _addressController,
                 decoration: const InputDecoration(
-                  labelText: "Address or Google Maps Link (optional)",
-                  border: OutlineInputBorder(),
+                  labelText: 'Address or Google Maps link (optional)',
                 ),
                 validator: (val) => null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _cityCountryController,
-                decoration: const InputDecoration(
-                  labelText: "City / Country",
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'City / country'),
                 validator:
                     (val) =>
                         val == null || val.trim().isEmpty ? 'Required' : null,
@@ -133,21 +130,14 @@ class _ManualImportScreenState extends State<ManualImportScreen> {
               TextFormField(
                 controller: _linkController,
                 decoration: const InputDecoration(
-                  labelText: "Source Link (optional)",
-                  border: OutlineInputBorder(),
+                  labelText: 'Source link (optional)',
                 ),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _submitForm,
-                icon: const Icon(Icons.check, size: 24, color: Colors.white),
-                label: const Text("Save Location"),
-                // This should then appear under the selected locations on the Import Success page, styled like the other location pins
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: const Color(0xFF062D40),
-                  foregroundColor: Colors.white,
-                ),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Save location'),
               ),
             ],
           ),

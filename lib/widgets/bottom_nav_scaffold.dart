@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../views/home/home_screen.dart';
 import '../views/import/link_import_screen.dart';
 import '../views/map/map_screen.dart';
 import '../views/calendar/calendar_screen.dart';
 import '../views/profile/profile_screen.dart';
 import '../services/share_intent_service.dart';
+import 'cloud_backdrop.dart';
 
 class BottomNavScaffold extends StatefulWidget {
   final int initialIndex;
@@ -25,13 +27,21 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold>
   late int _currentIndex;
   String? _pendingImportUrl;
 
+  static const _items = [
+    (Icons.home_rounded, 'Home'),
+    (Icons.add_rounded, 'Add'),
+    (Icons.near_me_rounded, 'Map'),
+    (Icons.auto_awesome_rounded, 'Plans'),
+    (Icons.person_rounded, 'You'),
+  ];
+
   List<Widget> _buildPages() {
     return [
-      MyHomeScreen(),
+      const MyHomeScreen(),
       ImportLinkScreen(initialUrl: _pendingImportUrl),
-      MapScreen(),
-      CalendarScreen(),
-      ProfileScreen(),
+      const MapScreen(),
+      const CalendarScreen(),
+      const ProfileScreen(),
     ];
   }
 
@@ -74,67 +84,94 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      extendBody: true,
-      body: Stack(
-        children: [
-          _buildPages()[_currentIndex],
-          Positioned(
-            left: 56,
-            right: 56,
-            bottom: 24,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
+    return CloudBackdrop(
+      fadeBottom: true,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        body: Stack(
+          children: [
+            _buildPages()[_currentIndex],
+            Positioned(
+              left: 22,
+              right: 22,
+              bottom: 22,
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
                   ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.home),
-                    iconSize: 25,
-                    color: _currentIndex == 0 ? Color(0xFF062D40) : Colors.grey,
-                    onPressed: () => setState(() => _currentIndex = 0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.hairline),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppColors.shadow,
+                        blurRadius: 28,
+                        offset: Offset(0, 12),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    iconSize: 25,
-                    color: _currentIndex == 1 ? Color(0xFF062D40) : Colors.grey,
-                    onPressed: () => setState(() => _currentIndex = 1),
+                  child: Row(
+                    children: List.generate(_items.length, (index) {
+                      final selected = _currentIndex == index;
+                      final item = _items[index];
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _currentIndex = index),
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color:
+                                  selected
+                                      ? AppColors.sky.withValues(alpha: 0.7)
+                                      : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  item.$1,
+                                  size: 20,
+                                  color:
+                                      selected
+                                          ? AppColors.inkDeep
+                                          : AppColors.muted,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item.$2,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight:
+                                        selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    color:
+                                        selected
+                                            ? AppColors.inkDeep
+                                            : AppColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.pin_drop_rounded),
-                    iconSize: 25,
-                    color: _currentIndex == 2 ? Color(0xFF062D40) : Colors.grey,
-                    onPressed: () => setState(() => _currentIndex = 2),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.bubble_chart),
-                    iconSize: 25,
-                    color: _currentIndex == 3 ? Color(0xFF062D40) : Colors.grey,
-                    onPressed: () => setState(() => _currentIndex = 3),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person),
-                    iconSize: 25,
-                    color: _currentIndex == 4 ? Color(0xFF062D40) : Colors.grey,
-                    onPressed: () => setState(() => _currentIndex = 4),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

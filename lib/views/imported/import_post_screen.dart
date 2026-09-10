@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:away/services/import_service.dart';
+import 'package:away/theme/app_colors.dart';
+import 'package:away/widgets/cloud_backdrop.dart';
+import 'package:away/widgets/soft_tile.dart';
 
 class ImportPostScreen extends StatelessWidget {
   final Map<String, dynamic> pin;
@@ -90,23 +93,12 @@ class ImportPostScreen extends StatelessWidget {
     final lat = latValue is num ? latValue.toDouble() : null;
     final lng = lngValue is num ? lngValue.toDouble() : null;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
+    return CloudScaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          name.isEmpty ? 'Saved Import' : name,
-          style: const TextStyle(
-            color: Color(0xFF062D40),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF062D40)),
+        title: Text(name.isEmpty ? 'Saved import' : name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
-            color: const Color(0xFF062D40),
+            icon: const Icon(Icons.ios_share_rounded),
             onPressed:
                 () => _shareImport(
                   context,
@@ -126,7 +118,7 @@ class ImportPostScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Stack(
@@ -137,8 +129,8 @@ class ImportPostScreen extends StatelessWidget {
                               thumbUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) {
-                                return Container(
-                                  decoration: const BoxDecoration(
+                                return const DecoratedBox(
+                                  decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -152,8 +144,8 @@ class ImportPostScreen extends StatelessWidget {
                               },
                             )
                           else
-                            Container(
-                              decoration: const BoxDecoration(
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -164,10 +156,21 @@ class ImportPostScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          Container(color: Colors.black.withAlpha(55)),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.05),
+                                  Colors.black.withValues(alpha: 0.28),
+                                ],
+                              ),
+                            ),
+                          ),
                           const Center(
                             child: Icon(
-                              Icons.play_circle_fill,
+                              Icons.play_circle_fill_rounded,
                               color: Colors.white,
                               size: 54,
                             ),
@@ -176,37 +179,54 @@ class ImportPostScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   if (address.isNotEmpty)
-                    Text(
-                      address,
-                      style: const TextStyle(
-                        color: Color(0xFF062D40),
-                        fontWeight: FontWeight.w600,
+                    SoftTile(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.place_outlined,
+                            color: AppColors.inkDeep,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              address,
+                              style: const TextStyle(
+                                color: AppColors.ink,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   if (address.isNotEmpty) const SizedBox(height: 12),
-                  const Text(
-                    'Parsed Description',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF062D40),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F6F9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      caption.isEmpty
-                          ? 'No parsed description was saved for this import.'
-                          : caption,
-                      style: const TextStyle(height: 1.35, fontSize: 14),
+                  SoftTile(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Parsed description',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          caption.isEmpty
+                              ? 'No parsed description was saved for this import.'
+                              : caption,
+                          style: const TextStyle(
+                            height: 1.4,
+                            fontSize: 13,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (lat != null && lng != null) ...[
@@ -246,13 +266,8 @@ class ImportPostScreen extends StatelessWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () => _openOriginalVideo(context, videoUrl),
-                icon: const Icon(Icons.open_in_new),
+                icon: const Icon(Icons.open_in_new_rounded),
                 label: const Text('Open original Instagram link'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF062D40),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
               ),
             ),
           ),

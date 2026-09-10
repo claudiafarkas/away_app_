@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:away/services/import_service.dart';
-import 'dart:typed_data';
+import 'package:away/theme/app_colors.dart';
+import 'package:away/widgets/soft_tile.dart';
 import 'dart:ui' as ui;
 
 class MapScreen extends StatefulWidget {
@@ -169,7 +170,7 @@ class _MapScreenState extends State<MapScreen> {
       "elementType": "geometry",
       "stylers": [
         {
-          "color": "#c9c9c9"
+          "color": "#c9dce8"
         }
       ]
     },
@@ -326,10 +327,10 @@ class _MapScreenState extends State<MapScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      barrierColor: Colors.black.withOpacity(0.15),
-      backgroundColor: Colors.white.withOpacity(0.92),
+      barrierColor: Colors.black.withValues(alpha: 0.12),
+      backgroundColor: Colors.white.withValues(alpha: 0.94),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
         // Group markers by country
@@ -358,7 +359,7 @@ class _MapScreenState extends State<MapScreen> {
                         Text(
                           'Your Locations',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF062D40),
                           ),
@@ -482,7 +483,7 @@ class _MapScreenState extends State<MapScreen> {
           zoom: _markers.isNotEmpty ? 12 : 2,
         ),
         markers: _markers,
-        zoomControlsEnabled: true,
+        zoomControlsEnabled: false,
         zoomGesturesEnabled: true,
         myLocationButtonEnabled: false,
         // style: _mapStyle,
@@ -497,66 +498,49 @@ class _MapScreenState extends State<MapScreen> {
       mapBody = Center(child: Text("Error loading map"));
     }
     print("📦 Returning Scaffold with map");
+    final overlayTop = MediaQuery.of(context).padding.top + 8;
     return Scaffold(
       body: Stack(
         children: [
           mapBody,
-          // Overlay replaced with compact translucent bottom sheet opened via button
           Positioned(
-            top: 60,
+            top: overlayTop,
             left: 16,
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              elevation: 3,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: () {
-                  _showPinsSheet(_markers, _countryColorMap);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+            child: GlassPill(
+              onTap: () {
+                _showPinsSheet(_markers, _countryColorMap);
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _isExpanded
+                        ? Icons.map_outlined
+                        : Icons.location_on_outlined,
+                    size: 18,
+                    color: AppColors.inkDeep,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _isExpanded
-                            ? Icons.map_outlined
-                            : Icons.location_on_outlined,
-                        size: 18,
-                        color: Color(0xFF062D40),
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        _isExpanded ? "Hide Pins" : "Show Pins",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF062D40),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  Text(
+                    _isExpanded ? 'Hide pins' : 'Show pins',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
           Positioned(
-            top: 100,
-            right: 10,
+            top: overlayTop + 48,
+            right: 12,
             child: Column(
               children: [
-                FloatingActionButton(
-                  heroTag: 'zoom_in',
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black54,
-                  elevation: 3,
-                  shape: const CircleBorder(),
-                  onPressed: () {
+                GlassPill(
+                  padding: const EdgeInsets.all(10),
+                  onTap: () {
                     setState(() {
                       _currentZoom += 1;
                       mapController?.animateCamera(
@@ -569,17 +553,12 @@ class _MapScreenState extends State<MapScreen> {
                       );
                     });
                   },
-                  child: const Icon(Icons.add),
+                  child: const Icon(Icons.add, color: AppColors.ink),
                 ),
-                SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'zoom_out',
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black54,
-                  elevation: 3,
-                  shape: const CircleBorder(),
-                  onPressed: () {
+                const SizedBox(height: 8),
+                GlassPill(
+                  padding: const EdgeInsets.all(10),
+                  onTap: () {
                     setState(() {
                       _currentZoom -= 1;
                       mapController?.animateCamera(
@@ -592,42 +571,50 @@ class _MapScreenState extends State<MapScreen> {
                       );
                     });
                   },
-                  child: const Icon(Icons.remove),
+                  child: const Icon(Icons.remove, color: AppColors.ink),
                 ),
               ],
             ),
           ),
           if (showBackToImportButton)
             Positioned(
-              bottom: 20,
+              bottom: 28,
               left: 20,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.arrow_back),
-                label: const Text("Back to Import Screen"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black54,
-                  elevation: 3,
+              child: GlassPill(
+                onTap: () => Navigator.pop(context),
+                child: const Row(
+                  children: [
+                    Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.ink),
+                    SizedBox(width: 6),
+                    Text(
+                      'Back to import',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           if (showDoneButton)
             Positioned(
-              bottom: 20,
+              bottom: 28,
               right: 20,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.check),
-                label: const Text("Done"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black54,
-                  elevation: 3,
+              child: GlassPill(
+                onTap: () => Navigator.pop(context),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_rounded, size: 18, color: AppColors.ink),
+                    SizedBox(width: 6),
+                    Text(
+                      'Done',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

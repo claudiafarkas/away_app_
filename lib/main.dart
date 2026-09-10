@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:away/views/import/manual_import_screen.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:away/services/share_intent_service.dart';
+import 'package:away/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,11 +58,7 @@ class MyApp extends StatelessWidget {
       title: 'Away App',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF062D40)),
-        scaffoldBackgroundColor: const Color.fromARGB(255, 6, 29, 41),
-      ),
+      theme: AppTheme.light(),
       home: const WelcomeLoad(),
       routes: {
         '/imported_screen': (context) => MyImportsScreen(),

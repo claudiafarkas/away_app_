@@ -5,7 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/cloud_backdrop.dart';
+import '../../widgets/soft_tile.dart';
 import '../auth/signin_screen.dart';
 
 class PrivacyScreen extends StatelessWidget {
@@ -13,13 +17,8 @@ class PrivacyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Privacy & Data'),
-        backgroundColor: const Color(0xFF062D40),
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: Colors.white,
+    return CloudScaffold(
+      appBar: AppBar(title: const Text('Privacy & data')),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -46,7 +45,7 @@ class PrivacyScreen extends StatelessWidget {
             'You may manage or delete your data by signing out or discontinuing use of the app.\n\n'
             'Contact\n'
             'discoveraway.app@gmail.com',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 14),
           ),
         ),
       ),
@@ -194,13 +193,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Personal Info'),
-        backgroundColor: const Color(0xFF062D40),
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: Colors.white,
+    return CloudScaffold(
+      appBar: AppBar(title: const Text('Personal info')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -263,15 +257,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saveChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF062D40),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-                child: const Text('Save Changes'),
+                child: const Text('Save changes'),
               ),
             ],
           ),
@@ -412,13 +398,8 @@ class LoginSecurityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login & Security'),
-        backgroundColor: const Color(0xFF062D40),
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: Colors.white,
+    return CloudScaffold(
+      appBar: AppBar(title: const Text('Login & security')),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -475,6 +456,77 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const _partnerNameKey = 'away_partner_name';
+  String? _partnerName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPartner();
+  }
+
+  Future<void> _loadPartner() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _partnerName = prefs.getString(_partnerNameKey);
+    });
+  }
+
+  Future<void> _savePartner(String? name) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (name == null || name.trim().isEmpty) {
+      await prefs.remove(_partnerNameKey);
+    } else {
+      await prefs.setString(_partnerNameKey, name.trim());
+    }
+    if (!mounted) return;
+    setState(
+      () => _partnerName = name?.trim().isEmpty == true ? null : name?.trim(),
+    );
+  }
+
+  Future<void> _editPartner() async {
+    final controller = TextEditingController(text: _partnerName ?? '');
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            _partnerName == null ? 'Add a companion' : 'Edit companion',
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Their name',
+              hintText: 'Who are you collecting places with?',
+            ),
+          ),
+          actions: [
+            if (_partnerName != null)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, ''),
+                child: const Text('Remove'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    await _savePartner(result.isEmpty ? null : result);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -482,72 +534,133 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = user?.email;
     final photoUrl = user?.photoURL;
 
-    const accentColor = Color(0xFF062D40);
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 128),
+        children: [
+          SoftTile(
+            gradient: AppColors.featuredGradients[0],
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 62),
-                if (user != null) ...[
-                  Center(
-                    child: CircleAvatar(
-                      radius: 40,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.white.withValues(alpha: 0.8),
                       backgroundImage:
                           photoUrl != null ? NetworkImage(photoUrl) : null,
                       child:
                           photoUrl == null
-                              ? const Icon(Icons.person, size: 40)
+                              ? const Icon(
+                                Icons.person_rounded,
+                                size: 30,
+                                color: AppColors.ink,
+                              )
                               : null,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Text(
-                      'Hey ${name ?? 'there'}!',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (email != null)
-                    Center(
-                      child: Text(
-                        email,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black54,
+                    if (_partnerName != null) ...[
+                      const SizedBox(width: 10),
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: AppColors.lavender.withValues(
+                          alpha: 0.7,
+                        ),
+                        child: Text(
+                          _partnerName!.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  const Center(
-                    child: Text(
-                      'Hey there!',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  user != null ? 'Hey ${name ?? 'there'}' : 'Hey there',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                if (email != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 24),
                 ],
-
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SoftTile(
+            onTap: _editPartner,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.peach.withValues(alpha: 0.7),
+                  child: Icon(
+                    _partnerName == null
+                        ? Icons.person_add_alt_1_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 18,
+                    color: AppColors.inkDeep,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _partnerName == null
+                            ? 'Add a companion'
+                            : _partnerName!,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _partnerName == null
+                            ? 'Collect places together'
+                            : 'Traveling with you',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SoftTile(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              children: [
                 _buildListTileWithSubtitle(
-                  'Personal Info',
-                  'Update your name, email, or profile photo',
-                  Icons.person,
-                  accentColor,
+                  'Personal info',
+                  'Name, email, or profile photo',
+                  Icons.person_rounded,
                   onTap: () async {
-                    // Await navigation and refresh on return
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -557,13 +670,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     setState(() {});
                   },
                 ),
-
-                // Removed 'Account Management' tile
                 _buildListTileWithSubtitle(
                   'Notifications',
-                  'Control your notification settings',
-                  Icons.notifications,
-                  accentColor,
+                  'Control what pings you',
+                  Icons.notifications_none_rounded,
                   onTap: () async {
                     final uri = Uri.parse('app-settings:');
                     if (await canLaunchUrl(uri)) {
@@ -572,10 +682,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 _buildListTileWithSubtitle(
-                  'Privacy & Data',
-                  'Manage what you share with the app',
-                  Icons.lock_outline,
-                  accentColor,
+                  'Privacy & data',
+                  'What you share with the app',
+                  Icons.lock_outline_rounded,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -586,10 +695,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 _buildListTileWithSubtitle(
-                  'Login & Security',
-                  'Update password or secure your account',
-                  Icons.security,
-                  accentColor,
+                  'Login & security',
+                  'Password and account safety',
+                  Icons.verified_user_outlined,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -599,130 +707,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   },
                 ),
-
-                const SizedBox(height: 32),
-                const Divider(height: 32),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'HELP & MORE',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                // Removed 'Help/Legal' tile
-                // Removed 'Accessibility' tile
-                // Removed 'Ad Preferences' tile
-                _buildListTile(
-                  'Give Us Your Feedback',
-                  Icons.feedback_outlined,
-                  accentColor,
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            contentPadding: const EdgeInsets.fromLTRB(
-                              20,
-                              20,
-                              20,
-                              12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            title: const Text(
-                              'Send Feedback',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  'We’d love to hear from you!',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Please send your feedback to:',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'discoveraway.app@gmail.com',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            actionsPadding: const EdgeInsets.only(
-                              right: 8,
-                              bottom: 8,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Close'),
-                              ),
-                            ],
-                          ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.9,
-                    ),
-                    child: TextButton(
-                      onPressed: () async {
-                        await AuthService.instance.signOut();
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignInScreen(),
-                          ),
-                          (route) => false,
-                        );
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: accentColor,
-                        side: const BorderSide(color: accentColor),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 20,
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Sign Out',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: 18),
+          SoftTile(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: ListTile(
+              leading: const Icon(
+                Icons.feedback_outlined,
+                color: AppColors.inkDeep,
+              ),
+              title: const Text(
+                'Give us your feedback',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Send feedback'),
+                        content: const Text(
+                          'We’d love to hear from you.\n\n'
+                          'discoveraway.app@gmail.com',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton(
+            onPressed: () async {
+              await AuthService.instance.signOut();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const SignInScreen()),
+                (route) => false,
+              );
+            },
+            child: const Text('Sign out'),
+          ),
+        ],
       ),
     );
   }
@@ -730,64 +764,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildListTileWithSubtitle(
     String title,
     String subtitle,
-    IconData icon,
-    Color iconColor, {
-    void Function()? onTap,
-  }) {
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 0,
-            vertical: 8,
-          ),
-          leading: Icon(icon, color: iconColor),
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          subtitle: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-          onTap:
-              onTap ??
-              () {
-                // TODO: Implement navigation logic
-              },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListTile(
-    String title,
-    IconData icon,
-    Color iconColor, {
+    IconData icon, {
     void Function()? onTap,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-      leading: Icon(icon, color: iconColor, size: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      leading: Icon(icon, color: AppColors.inkDeep),
       title: Text(
         title,
         style: const TextStyle(
           fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-      onTap:
-          onTap ??
-          () {
-            // TODO: Implement navigation logic
-          },
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+      onTap: onTap,
     );
   }
 }
