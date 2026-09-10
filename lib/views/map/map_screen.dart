@@ -199,6 +199,17 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    ImportService.instance.addListener(_onImportsChanged);
+    _prepareMarkers();
+  }
+
+  @override
+  void dispose() {
+    ImportService.instance.removeListener(_onImportsChanged);
+    super.dispose();
+  }
+
+  void _onImportsChanged() {
     _prepareMarkers();
   }
 

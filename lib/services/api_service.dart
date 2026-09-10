@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Small helper to choose the correct base URL per environment.
-/// - iOS Simulator & macOS: 127.0.0.1
+/// - iOS Simulator & macOS: Cloud Run by default
 /// - Android Emulator: 10.0.2.2
 /// - Web: 127.0.0.1
 ///
@@ -14,6 +14,16 @@ String get _defaultBaseUrl {
   if (kIsWeb) return 'http://127.0.0.1:8000';
   if (Platform.isAndroid) return 'http://10.0.2.2:8000';
   return 'https://away-backend-975056194033.us-central1.run.app';
+}
+
+String _errorDetail(http.Response res) {
+  try {
+    final decoded = jsonDecode(res.body);
+    if (decoded is Map && decoded['detail'] != null) {
+      return decoded['detail'].toString();
+    }
+  } catch (_) {}
+  return res.body;
 }
 
 class ApiService {
@@ -43,7 +53,7 @@ class ApiService {
       debugPrint('⬅️ Body: ${res.body}');
 
       if (res.statusCode != 200) {
-        throw Exception('Failed to parse: ${res.statusCode} ${res.body}');
+        throw Exception(_errorDetail(res));
       }
       return jsonDecode(res.body) as Map<String, dynamic>;
     } catch (e) {
@@ -70,11 +80,102 @@ class ApiService {
       debugPrint('⬅️ Body: ${res.body}');
 
       if (res.statusCode != 200) {
-        throw Exception('Failed to geocode: ${res.statusCode} ${res.body}');
+        throw Exception(_errorDetail(res));
       }
       return jsonDecode(res.body) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('❌ geocodeAddress error: $e');
+      rethrow;
+    }
+  }
+
+  /// GET /api/places_autocomplete?query=...
+  /// Falls back to geocoding if the autocomplete route is not deployed yet.
+  Future<List<Map<String, dynamic>>> autocompletePlaces({
+    required String query,
+    String? sessionToken,
+  }) async {
+    final cleaned = query.trim();
+    if (cleaned.length < 2) return const [];
+
+    final uri = Uri.parse('$_base/api/places_autocomplete').replace(
+      queryParameters: {
+        'query': cleaned,
+        if (sessionToken != null && sessionToken.isNotEmpty)
+          'session_token': sessionToken,
+      },
+    );
+    debugPrint('➡️ GET $uri');
+    try {
+      final res = await http.get(uri).timeout(const Duration(seconds: 15));
+      debugPrint('⬅️ ${res.statusCode} ${res.reasonPhrase}');
+
+      if (res.statusCode == 404) {
+        return _geocodeAsSuggestions(cleaned);
+      }
+      if (res.statusCode != 200) {
+        throw Exception(_errorDetail(res));
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw = data['suggestions'];
+      if (raw is! List) return const [];
+      return raw
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (e) {
+      debugPrint('❌ autocompletePlaces error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _geocodeAsSuggestions(String query) async {
+    final data = await geocodeAddress(query);
+    final rawResults = data['results'];
+    final items =
+        rawResults is List && rawResults.isNotEmpty
+            ? rawResults.whereType<Map>().toList()
+            : [data];
+    return items.map((item) {
+      final address = (item['address'] ?? query).toString();
+      final name = (item['name'] ?? query).toString();
+      return <String, dynamic>{
+        'place_id': item['place_id'],
+        'primary_text': name,
+        'secondary_text': address,
+        'description': address,
+        'lat': item['lat'],
+        'lng': item['lng'],
+        'city': item['city'],
+        'country': item['country'],
+        'address': address,
+        'name': name,
+      };
+    }).toList();
+  }
+
+  /// GET /api/place_details?place_id=...
+  Future<Map<String, dynamic>> placeDetails({
+    required String placeId,
+    String? sessionToken,
+  }) async {
+    final uri = Uri.parse('$_base/api/place_details').replace(
+      queryParameters: {
+        'place_id': placeId,
+        if (sessionToken != null && sessionToken.isNotEmpty)
+          'session_token': sessionToken,
+      },
+    );
+    debugPrint('➡️ GET $uri');
+    try {
+      final res = await http.get(uri).timeout(const Duration(seconds: 15));
+      debugPrint('⬅️ ${res.statusCode} ${res.reasonPhrase}');
+      if (res.statusCode != 200) {
+        throw Exception(_errorDetail(res));
+      }
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('❌ placeDetails error: $e');
       rethrow;
     }
   }
@@ -97,31 +198,3 @@ class ApiService {
     }
   }
 }
-
-
-// api_service.dart
-
-
-// import 'dart:convert';
-// import 'package:http/http.dart' as http;
-// import 'package:flutter/foundation.dart';
-
-// class ApiService {
-//   final _base = "http://localhost:8000"; // Use this for local development
-//   // final _base = "http://0.0.0.0:8000";
-//   Future<Map<String, dynamic>> parseInstagramUrl(String url) async {
-//     final res = await http.post(
-//       Uri.parse("$_base/parse_instagram_post"),
-//       headers: {'Content-Type': 'application/json'},
-//       body: jsonEncode({'url': url}),
-//     );
-//     debugPrint("🔍 [ApiService] Status: ${res.statusCode}");
-//     debugPrint("🔍 [ApiService] Body: ${res.body}");
-//     if (res.statusCode == 200) {
-//       return jsonDecode(res.body) as Map<String, dynamic>;
-//     } else {
-//       throw Exception("Failed to parse: ${res.body}");
-//     }
-//   }
-// }
-

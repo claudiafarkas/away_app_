@@ -7,21 +7,13 @@ import traceback
 import re
 import uuid
 from urllib.parse import quote
-from dotenv import load_dotenv
 from google.cloud import storage
+from maps_client import geocode_query
 
 router = APIRouter(prefix="/api")
 
-# Load local .env only in dev (Cloud Run ignores this)
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-
-GOOGLE_API_KEY = os.getenv("BACKEND_GOOGLE_API_KEY") or os.getenv("GOOGLE_MAPS_API_KEY")
 APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
 FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET") or os.getenv("STORAGE_BUCKET")
-if not GOOGLE_API_KEY:
-    raise RuntimeError("Missing BACKEND_GOOGLE_API_KEY or GOOGLE_MAPS_API_KEY in environment")
-if not APIFY_API_TOKEN:
-    raise RuntimeError("Missing APIFY_API_TOKEN in environment")
 
 # --- spaCy model: try transformer first, fall back to small if unavailable ---
 try:
@@ -60,6 +52,9 @@ def get_post_data(url: str) -> dict:
     Fetch Instagram post data using Apify Instagram Post Scraper.
     Raises ValueError if URL is invalid or API fails.
     """
+    if not APIFY_API_TOKEN:
+        raise ValueError("Server is missing APIFY_API_TOKEN")
+
     # Run the Apify actor
     run_url = "https://api.apify.com/v2/acts/apify~instagram-scraper/runs"
     headers = {"Authorization": f"Bearer {APIFY_API_TOKEN}", "Content-Type": "application/json"}
@@ -233,33 +228,28 @@ def geocode_name(name: str) -> dict | None:
     Geocode a place name via Google Geocoding and split city/country.
     """
     try:
-        resp = requests.get(
-            "https://maps.googleapis.com/maps/api/geocode/json",
-            params={"address": name, "key": GOOGLE_API_KEY},
-            timeout=15,
-        )
-        data = resp.json()
-    except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Geocoding request failed: {e}")
-
-    if data.get("status") != "OK" or not data.get("results"):
+        result = geocode_query(name)
+    except HTTPException as e:
+        detail = str(e.detail or "")
+        if any(
+            token in detail
+            for token in (
+                "REQUEST_DENIED",
+                "OVER_QUERY_LIMIT",
+                "missing BACKEND_GOOGLE_API_KEY",
+            )
+        ):
+            raise
         return None
 
-    place = data["results"][0]
-    full_address = place["formatted_address"]
-
-    parts = [p.strip() for p in full_address.split(",")]
-    country = parts[-1] if len(parts) >= 1 else ""
-    city_raw = parts[-2] if len(parts) >= 2 else ""
-    city = re.sub(r"^\d+\s*", "", city_raw)
-
+    result["name"] = name
     return {
         "name": name,
-        "address": full_address,
-        "city": city,
-        "country": country,
-        "lat": place["geometry"]["location"]["lat"],
-        "lng": place["geometry"]["location"]["lng"],
+        "address": result.get("address"),
+        "city": result.get("city"),
+        "country": result.get("country"),
+        "lat": result.get("lat"),
+        "lng": result.get("lng"),
     }
 
 def dedupe_locations(locations: list[dict]) -> list[dict]:

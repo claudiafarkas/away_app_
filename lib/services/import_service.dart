@@ -7,9 +7,10 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-class ImportService {
+class ImportService extends ChangeNotifier {
   // private constructor
   ImportService._();
 
@@ -69,12 +70,13 @@ class ImportService {
           'thumbnailUrl': loc['thumbnailUrl'] ?? loc['thumbnail_url'],
           'thumbnailStoragePath':
               loc['thumbnailStoragePath'] ?? loc['thumbnail_storage_path'],
-          'sourceUrl': loc['sourceUrl'] ?? loc['source_url'],
+          'sourceUrl': loc['sourceUrl'] ?? loc['source_url'] ?? loc['source'],
           'caption': loc['caption'],
           'createdAt': loc['createdAt'],
         });
       }
     }
+    notifyListeners();
   }
 
   Future<void> addAndPersistLocations(
@@ -100,7 +102,7 @@ class ImportService {
         'thumbnailUrl': loc['thumbnailUrl'] ?? loc['thumbnail_url'],
         'thumbnailStoragePath':
             loc['thumbnailStoragePath'] ?? loc['thumbnail_storage_path'],
-        'sourceUrl': loc['sourceUrl'] ?? loc['source_url'],
+        'sourceUrl': loc['sourceUrl'] ?? loc['source_url'] ?? loc['source'],
         'caption': loc['caption'],
         'updatedAt': now,
       };
@@ -183,6 +185,7 @@ class ImportService {
     _importedLocations
       ..clear()
       ..addAll(loaded);
+    notifyListeners();
   }
 
   Future<String?> _tryFetchInstagramThumbnail(String url) async {
@@ -204,6 +207,7 @@ class ImportService {
   /// clear all stored locations (if you ever need to reset).
   void clearAll() {
     _importedLocations.clear();
+    notifyListeners();
   }
 
   Future<void> deleteLocation(Map<String, dynamic> loc) async {
@@ -221,6 +225,7 @@ class ImportService {
     } else {
       await imports.doc(_docIdFor(loc)).delete();
     }
+    notifyListeners();
   }
 
   bool isDuplicateUrl(String url) {

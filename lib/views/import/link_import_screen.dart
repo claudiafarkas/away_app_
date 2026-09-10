@@ -349,6 +349,27 @@ class _ImportLinkScreenState extends State<ImportLinkScreen> {
                         )
                         : const Text('Import'),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed:
+                    _isLoading
+                        ? null
+                        : () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            '/manual_import_screen',
+                          );
+                          if (!mounted || result == null) return;
+                          final pin = Map<String, dynamic>.from(result as Map);
+                          final name = (pin['name'] ?? 'Place').toString();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Saved $name to your map')),
+                          );
+                        },
+                icon: const Icon(Icons.edit_location_alt_rounded),
+                label: const Text('Add a place manually'),
+              ),
               if (_isLoading) ...[
                 const SizedBox(height: 14),
                 ClipRRect(

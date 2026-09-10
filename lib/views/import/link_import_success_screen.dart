@@ -328,11 +328,12 @@ class _ImportSuccessScreenState extends State<ImportSuccessScreen> {
                             '/manual_import_screen',
                           );
                           if (result != null && mounted) {
+                            final pin = Map<String, dynamic>.from(
+                              result as Map,
+                            );
                             setState(() {
-                              widget.locations.add(
-                                result as Map<String, dynamic>,
-                              );
-                              _selectedLocations.add(false);
+                              widget.locations.add(pin);
+                              _selectedLocations.add(true);
                             });
                           }
                         },
