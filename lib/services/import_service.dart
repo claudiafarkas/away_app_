@@ -256,9 +256,36 @@ class ImportService extends ChangeNotifier {
     }
   }
 
+  void _resetFolders() {
+    _folderNames
+      ..clear()
+      ..addAll([allFolderName, 'Lisbon', 'Food']);
+    _folderPins
+      ..clear()
+      ..addAll({
+        'Lisbon': <Map<String, dynamic>>[],
+        'Food': <Map<String, dynamic>>[],
+      });
+  }
+
   /// clear all stored locations (if you ever need to reset).
   void clearAll() {
     _importedLocations.clear();
+    _resetFolders();
+    notifyListeners();
+  }
+
+  /// Deletes persisted imports, then clears in-memory state.
+  Future<void> deleteAllPersisted() async {
+    final imports = _importsCollection;
+    if (imports != null) {
+      final snapshot = await imports.get();
+      for (final doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    }
+    _importedLocations.clear();
+    _resetFolders();
     notifyListeners();
   }
 

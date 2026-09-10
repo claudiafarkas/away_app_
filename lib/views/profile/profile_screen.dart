@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/privacy_policy.dart';
 import '../../services/auth_service.dart';
+import '../../services/import_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/cloud_backdrop.dart';
 import '../../widgets/soft_tile.dart';
@@ -22,30 +24,24 @@ class PrivacyScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Privacy Policy\n\n'
-            'Away values your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use the Away app.\n\n'
-            'Information We Collect\n'
-            '• Account Information: When you sign in, we collect your name and email address to authenticate your account.\n'
-            '• User Content: Video links, saved locations, map pins, and related metadata you choose to provide.\n'
-            '• Location Information: Location data associated with places you save or view. Away does not track real-time background location.\n'
-            '• Usage & Diagnostics: Basic usage, crash, and performance data to improve stability.\n\n'
-            'How We Use Your Information\n'
-            '• Authenticate users\n'
-            '• Enable app features\n'
-            '• Save and display user content\n'
-            '• Maintain performance and security\n\n'
-            'Data Sharing\n'
-            'Away does not sell or share personal data with advertisers. Trusted third-party services (Firebase, Google Maps) are used only for core functionality.\n\n'
-            'Tracking\n'
-            'Away does not track users across apps or websites and does not use data for targeted advertising.\n\n'
-            'Data Security\n'
-            'We use industry-standard security practices to protect your information.\n\n'
-            'Your Choices\n'
-            'You may manage or delete your data by signing out or discontinuing use of the app.\n\n'
-            'Contact\n'
-            'discoveraway.app@gmail.com',
-            style: TextStyle(fontSize: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Privacy Policy\n\n${PrivacyPolicy.body}',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              OutlinedButton(
+                onPressed: () {
+                  launchUrl(
+                    Uri.parse(PrivacyPolicy.publicUrl),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                child: const Text('Open privacy policy on the web'),
+              ),
+            ],
           ),
         ),
       ),
@@ -334,11 +330,14 @@ class LoginSecurityScreen extends StatelessWidget {
 
       final uid = user.uid;
 
-      // Delete Firestore user data
-      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      await ImportService.instance.deleteAllPersisted();
 
-      // Delete any related collections (videos, locations, etc.)
-      // Add more collections as needed
+      try {
+        await FirebaseStorage.instance.ref('user_profiles/$uid.jpg').delete();
+      } catch (_) {
+        // Photo may not exist.
+      }
+
       final videosSnapshot =
           await FirebaseFirestore.instance
               .collection('videos')
@@ -348,7 +347,8 @@ class LoginSecurityScreen extends StatelessWidget {
         await doc.reference.delete();
       }
 
-      // Delete Firebase Auth user
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+
       await user.delete();
 
       // Close loading dialog

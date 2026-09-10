@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:away/services/import_service.dart';
 import 'package:away/theme/app_colors.dart';
 import 'package:away/widgets/cloud_backdrop.dart';
 import 'package:away/widgets/soft_tile.dart';
@@ -233,15 +232,6 @@ class ImportPostScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: () {
-                        ImportService.instance.clearAll();
-                        ImportService.instance.addLocations([
-                          {
-                            'name': name,
-                            'address': address,
-                            'lat': lat,
-                            'lng': lng,
-                          },
-                        ]);
                         Navigator.pushNamed(
                           context,
                           '/map',

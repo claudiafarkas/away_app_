@@ -58,10 +58,10 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app needs your location for full functionality.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Away uses your photo library so you can choose a profile picture.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to your location to show nearby places.</string>
+	<string>Away can use your location while the app is open to help show your saved places on the map. We do not track you in the background.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

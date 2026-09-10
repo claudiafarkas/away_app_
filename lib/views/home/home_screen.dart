@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/pin_card.dart';
 import '../../widgets/soft_tile.dart';
+import '../imported/import_post_screen.dart';
 import '../imported/imported_screen.dart';
 
 class _FeedItem {
@@ -16,6 +17,7 @@ class _FeedItem {
     this.lat,
     this.lng,
     this.promoted,
+    this.pin,
   });
 
   final String name;
@@ -24,6 +26,7 @@ class _FeedItem {
   final double? lat;
   final double? lng;
   final PreviewAd? promoted;
+  final Map<String, dynamic>? pin;
 
   bool get isPromoted => promoted != null;
 }
@@ -54,6 +57,28 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
   ];
 
   String? _selectedExplore;
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    ImportService.instance.addListener(_onImportsChanged);
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim());
+    });
+  }
+
+  @override
+  void dispose() {
+    ImportService.instance.removeListener(_onImportsChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onImportsChanged() {
+    if (mounted) setState(() {});
+  }
 
   List<_FeedItem> _buildFeed() {
     final imported = ImportService.instance.importedLocations;
@@ -67,12 +92,19 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
             thumbUrl: (pin['thumbnailUrl'] as String? ?? '').trim(),
             lat: pin['lat'] is num ? (pin['lat'] as num).toDouble() : null,
             lng: pin['lng'] is num ? (pin['lng'] as num).toDouble() : null,
+            pin: pin,
           ),
         );
       }
     } else {
       for (final sample in _placeholderPins) {
-        organic.add(_FeedItem(name: sample.$1, address: sample.$2));
+        organic.add(
+          _FeedItem(
+            name: sample.$1,
+            address: sample.$2,
+            pin: {'name': sample.$1, 'address': sample.$2},
+          ),
+        );
       }
     }
 
@@ -94,6 +126,29 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
       }
     }
     return feed;
+  }
+
+  List<_FeedItem> _visibleFeed() {
+    final feed = _buildFeed();
+    if (_query.isEmpty) return feed;
+    final q = _query.toLowerCase();
+    return feed.where((item) {
+      return item.name.toLowerCase().contains(q) ||
+          item.address.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  void _openPin(_FeedItem item) {
+    if (item.promoted != null) {
+      _openPromoted(item.promoted!);
+      return;
+    }
+    final pin = item.pin;
+    if (pin == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ImportPostScreen(pin: pin)),
+    );
   }
 
   Future<void> _openPromoted(PreviewAd ad) async {
@@ -175,7 +230,7 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
     final topInset = MediaQuery.of(context).padding.top;
     final imported = ImportService.instance.importedLocations;
     final hasImported = imported.isNotEmpty;
-    final feed = _buildFeed();
+    final feed = _visibleFeed();
 
     return Stack(
       children: [
@@ -311,32 +366,43 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
                         : 'Placeholder masonry while your feed is empty',
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 128),
-              sliver: SliverMasonryGrid.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childCount: feed.length,
-                itemBuilder: (context, index) {
-                  final item = feed[index];
-                  return PinCard(
-                    name: item.name,
-                    address: item.address,
-                    thumbUrl: item.thumbUrl,
-                    lat: item.lat,
-                    lng: item.lng,
-                    imageHeight: [168.0, 210.0, 186.0, 228.0][index % 4],
-                    gradientIndex: item.promoted?.gradientIndex ?? index,
-                    isPromoted: item.isPromoted,
-                    onTap:
-                        item.promoted == null
-                            ? null
-                            : () => _openPromoted(item.promoted!),
-                  );
-                },
+            if (feed.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 128),
+                  child: SoftTile(
+                    child: Text(
+                      'No places match that search.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 128),
+                sliver: SliverMasonryGrid.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childCount: feed.length,
+                  itemBuilder: (context, index) {
+                    final item = feed[index];
+                    return PinCard(
+                      name: item.name,
+                      address: item.address,
+                      thumbUrl: item.thumbUrl,
+                      lat: item.lat,
+                      lng: item.lng,
+                      imageHeight: [168.0, 210.0, 186.0, 228.0][index % 4],
+                      gradientIndex: item.promoted?.gradientIndex ?? index,
+                      isPromoted: item.isPromoted,
+                      onTap: () => _openPin(item),
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
         Positioned(
@@ -351,13 +417,14 @@ class _MyHomeScreenState extends State<MyHomeScreen> {
                     horizontal: 14,
                     vertical: 2,
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.search_rounded, color: AppColors.muted),
-                      SizedBox(width: 8),
+                      const Icon(Icons.search_rounded, color: AppColors.muted),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
-                          decoration: InputDecoration(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
                             hintText: 'Search places',
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
