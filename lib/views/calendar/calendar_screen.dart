@@ -117,7 +117,7 @@ class CalendarScreen extends StatelessWidget {
                 crossAxisCount: 2,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                childAspectRatio: 0.92,
+                childAspectRatio: 0.86,
               ),
               itemBuilder: (context, index) {
                 final month = index + 1;
@@ -236,76 +236,100 @@ class _MiniMonthCard extends StatelessWidget {
             .toList();
 
     return SoftTile(
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       onTap: monthTrips.isEmpty ? null : () => onTripTap(monthTrips.first),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _monthNames[month - 1],
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+      child: SizedBox.expand(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _monthNames[month - 1],
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Row(
-            children: [
-              _Dow('M'),
-              _Dow('T'),
-              _Dow('W'),
-              _Dow('T'),
-              _Dow('F'),
-              _Dow('S'),
-              _Dow('S'),
-            ],
-          ),
-          const SizedBox(height: 4),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              childAspectRatio: 1,
+            const SizedBox(height: 6),
+            const Row(
+              children: [
+                _Dow('M'),
+                _Dow('T'),
+                _Dow('W'),
+                _Dow('T'),
+                _Dow('F'),
+                _Dow('S'),
+                _Dow('S'),
+              ],
             ),
-            itemCount: leading + daysInMonth,
-            itemBuilder: (context, index) {
-              if (index < leading) return const SizedBox.shrink();
-              final day = index - leading + 1;
-              final date = DateTime(year, month, day);
-              PreviewTrip? hit;
-              for (final trip in trips) {
-                if (trip.covers(date)) {
-                  hit = trip;
-                  break;
-                }
-              }
-              return Center(
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: hit?.color.withValues(alpha: 0.55),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$day',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight:
-                          hit != null ? FontWeight.w700 : FontWeight.w500,
-                      color: AppColors.ink.withValues(
-                        alpha: hit != null ? 0.95 : 0.55,
+            const SizedBox(height: 2),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  const columns = 7;
+                  const weeks = 6;
+                  final cellWidth = constraints.maxWidth / columns;
+                  final cellHeight = constraints.maxHeight / weeks;
+                  return ClipRect(
+                    child: GridView.builder(
+                      padding: EdgeInsets.zero,
+                      physics: const NeverScrollableScrollPhysics(),
+                      primary: false,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        childAspectRatio: cellWidth / cellHeight,
                       ),
+                      itemCount: weeks * columns,
+                      itemBuilder: (context, index) {
+                        if (index < leading) return const SizedBox.shrink();
+                        final day = index - leading + 1;
+                        if (day > daysInMonth) return const SizedBox.shrink();
+                        final date = DateTime(year, month, day);
+                        PreviewTrip? hit;
+                        for (final trip in trips) {
+                          if (trip.covers(date)) {
+                            hit = trip;
+                            break;
+                          }
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.all(1.5),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: hit?.color.withValues(alpha: 0.55),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '$day',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight:
+                                        hit != null
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    color: AppColors.ink.withValues(
+                                      alpha: hit != null ? 0.95 : 0.55,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

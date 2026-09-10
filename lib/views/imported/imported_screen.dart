@@ -15,13 +15,7 @@ class MyImportsScreen extends StatefulWidget {
 }
 
 class _MyImportsScreenState extends State<MyImportsScreen> {
-  final List<String> _boardNames = ["All Locations", "Lisbon", "Food"];
-  final Map<String, List<Map<String, dynamic>>> _customBoards = {
-    "Lisbon": [],
-    "Food": [],
-  };
-
-  String _selectedBoard = "All Locations";
+  String _selectedBoard = ImportService.allFolderName;
 
   final Set<int> _selectedIndices = {};
 
@@ -35,7 +29,18 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
   @override
   void initState() {
     super.initState();
+    ImportService.instance.addListener(_onImportsChanged);
     _loadPersistedImports();
+  }
+
+  @override
+  void dispose() {
+    ImportService.instance.removeListener(_onImportsChanged);
+    super.dispose();
+  }
+
+  void _onImportsChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadPersistedImports() async {
@@ -70,12 +75,8 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
               ElevatedButton(
                 onPressed: () {
                   final name = controller.text.trim();
-                  if (name.isNotEmpty && !_boardNames.contains(name)) {
-                    setState(() {
-                      _boardNames.add(name);
-                      _customBoards[name] = [];
-                      _selectedBoard = name;
-                    });
+                  if (ImportService.instance.createFolder(name)) {
+                    setState(() => _selectedBoard = name);
                   }
                   Navigator.pop(context);
                 },
@@ -107,17 +108,15 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
               ElevatedButton(
                 onPressed: () {
                   final name = controller.text.trim();
-                  if (name.isNotEmpty && !_boardNames.contains(name)) {
-                    // Grab all “All Locations” pins and move the selected ones into the new folder.
+                  if (ImportService.instance.createFolder(name)) {
                     final allPins = ImportService.instance.importedLocations;
+                    ImportService.instance.addPinsToFolder(
+                      name,
+                      _selectedIndices
+                          .where((idx) => idx >= 0 && idx < allPins.length)
+                          .map((idx) => allPins[idx]),
+                    );
                     setState(() {
-                      _boardNames.add(name);
-                      _customBoards[name] = [];
-                      for (var idx in _selectedIndices) {
-                        if (idx >= 0 && idx < allPins.length) {
-                          _customBoards[name]!.add(allPins[idx]);
-                        }
-                      }
                       _selectedIndices.clear();
                       _isSelectionMode = false;
                     });
@@ -133,7 +132,7 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
 
   // Show a dialog listing existing boards. If user picks one, move selected pins there.
   void _addToFolder() {
-    final folderNames = _boardNames;
+    final folderNames = ImportService.instance.folderNames;
     showDialog(
       context: context,
       builder:
@@ -143,17 +142,15 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
               ...folderNames.map((fname) {
                 return SimpleDialogOption(
                   onPressed: () {
-                    if (fname != "All Locations" &&
-                        _customBoards.containsKey(fname)) {
+                    if (fname != ImportService.allFolderName) {
                       final allPins = ImportService.instance.importedLocations;
-                      setState(() {
-                        for (var idx in _selectedIndices) {
-                          if (idx >= 0 && idx < allPins.length) {
-                            _customBoards[fname]!.add(allPins[idx]);
-                          }
-                        }
-                        _selectedIndices.clear();
-                      });
+                      ImportService.instance.addPinsToFolder(
+                        fname,
+                        _selectedIndices
+                            .where((idx) => idx >= 0 && idx < allPins.length)
+                            .map((idx) => allPins[idx]),
+                      );
+                      setState(() => _selectedIndices.clear());
                     }
                     Navigator.pop(context);
                   },
@@ -188,18 +185,6 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                 onPressed: () async {
                   Navigator.pop(context);
                   await ImportService.instance.deleteLocation(pin);
-                  if (mounted) {
-                    setState(() {
-                      for (final board in _customBoards.values) {
-                        board.removeWhere(
-                          (item) =>
-                              item['name'] == pin['name'] &&
-                              item['lat'] == pin['lat'] &&
-                              item['lng'] == pin['lng'],
-                        );
-                      }
-                    });
-                  }
                 },
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                 child: const Text('Delete'),
@@ -216,13 +201,7 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
       );
     }
 
-    // Build a map of “board name → list of pins.”  “All Locations” always
-    // points to the ImportService’s master importedLocations list.
-    final Map<String, List<Map<String, dynamic>>> folders = {
-      "All Locations": ImportService.instance.importedLocations,
-      ..._customBoards,
-    };
-    final pinList = folders[board]!;
+    final pinList = ImportService.instance.pinsInFolder(board);
     final filteredPins =
         _appliedFilters.isEmpty
             ? pinList
@@ -309,7 +288,7 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
                 }
                 final isSelectable =
                     _isSelectionMode &&
-                    (board == "All Locations") &&
+                    (board == ImportService.allFolderName) &&
                     _appliedFilters.isEmpty;
                 final isSelected =
                     isSelectable && _selectedIndices.contains(index);
@@ -463,7 +442,7 @@ class _MyImportsScreenState extends State<MyImportsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                ..._boardNames.map((name) {
+                ...ImportService.instance.folderNames.map((name) {
                   final isSelected = _selectedBoard == name;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),

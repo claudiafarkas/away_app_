@@ -17,8 +17,16 @@ class ImportService extends ChangeNotifier {
   // the single, global instance
   static final ImportService instance = ImportService._();
 
+  static const allFolderName = 'All Locations';
+
   // internal list of all imported location maps
   final List<Map<String, dynamic>> _importedLocations = [];
+
+  final List<String> _folderNames = [allFolderName, 'Lisbon', 'Food'];
+  final Map<String, List<Map<String, dynamic>>> _folderPins = {
+    'Lisbon': [],
+    'Food': [],
+  };
 
   CollectionReference<Map<String, dynamic>>? get _importsCollection {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -47,6 +55,50 @@ class ImportService extends ChangeNotifier {
   /// Returns a read‐only view of all imported locations.
   List<Map<String, dynamic>> get importedLocations =>
       List.unmodifiable(_importedLocations);
+
+  List<String> get folderNames => List.unmodifiable(_folderNames);
+
+  List<String> get customFolderNames =>
+      _folderNames.where((name) => name != allFolderName).toList();
+
+  List<Map<String, dynamic>> pinsInFolder(String folder) {
+    if (folder == allFolderName) return importedLocations;
+    return List.unmodifiable(_folderPins[folder] ?? const []);
+  }
+
+  bool createFolder(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || _folderNames.contains(trimmed)) return false;
+    _folderNames.add(trimmed);
+    _folderPins[trimmed] = [];
+    notifyListeners();
+    return true;
+  }
+
+  void addPinsToFolder(String folder, Iterable<Map<String, dynamic>> pins) {
+    if (folder == allFolderName) return;
+    final list = _folderPins.putIfAbsent(folder, () {
+      if (!_folderNames.contains(folder)) _folderNames.add(folder);
+      return <Map<String, dynamic>>[];
+    });
+    for (final pin in pins) {
+      final already = list.any((existing) => _samePin(existing, pin));
+      if (!already) list.add(Map<String, dynamic>.from(pin));
+    }
+    notifyListeners();
+  }
+
+  bool _samePin(Map<String, dynamic> a, Map<String, dynamic> b) {
+    return a['name'] == b['name'] &&
+        a['lat'] == b['lat'] &&
+        a['lng'] == b['lng'];
+  }
+
+  void _removePinFromFolders(Map<String, dynamic> loc) {
+    for (final list in _folderPins.values) {
+      list.removeWhere((item) => _samePin(item, loc));
+    }
+  }
 
   /// a batch of new locations. If a location with the same 'name'
   /// and identical lat/lng already exists, it won’t be added again.
@@ -211,12 +263,8 @@ class ImportService extends ChangeNotifier {
   }
 
   Future<void> deleteLocation(Map<String, dynamic> loc) async {
-    _importedLocations.removeWhere(
-      (e) =>
-          e['name'] == loc['name'] &&
-          e['lat'] == loc['lat'] &&
-          e['lng'] == loc['lng'],
-    );
+    _importedLocations.removeWhere((e) => _samePin(e, loc));
+    _removePinFromFolders(loc);
     final imports = _importsCollection;
     if (imports == null) return;
     final docId = (loc['docId'] as String?)?.trim();
