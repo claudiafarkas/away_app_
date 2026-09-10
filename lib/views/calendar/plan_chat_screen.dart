@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:away/data/preview_content.dart';
 import 'package:away/services/import_service.dart';
+import 'package:away/services/trip_service.dart';
 import 'package:away/theme/app_colors.dart';
 import 'package:away/widgets/cloud_backdrop.dart';
 import 'package:away/widgets/soft_tile.dart';
@@ -388,13 +389,15 @@ class _PlanChatScreenState extends State<PlanChatScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: ElevatedButton(
                 onPressed: () {
+                  final trips = TripService.instance.trips;
+                  final trip =
+                      trips.isNotEmpty
+                          ? trips.first
+                          : PreviewContent.trips.first;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (_) => TripDetailScreen(
-                            trip: PreviewContent.trips.first,
-                          ),
+                      builder: (_) => TripDetailScreen(trip: trip),
                     ),
                   );
                 },

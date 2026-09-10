@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/privacy_policy.dart';
 import '../../services/auth_service.dart';
 import '../../services/import_service.dart';
@@ -456,77 +455,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _partnerNameKey = 'away_partner_name';
-  String? _partnerName;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPartner();
-  }
-
-  Future<void> _loadPartner() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _partnerName = prefs.getString(_partnerNameKey);
-    });
-  }
-
-  Future<void> _savePartner(String? name) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (name == null || name.trim().isEmpty) {
-      await prefs.remove(_partnerNameKey);
-    } else {
-      await prefs.setString(_partnerNameKey, name.trim());
-    }
-    if (!mounted) return;
-    setState(
-      () => _partnerName = name?.trim().isEmpty == true ? null : name?.trim(),
-    );
-  }
-
-  Future<void> _editPartner() async {
-    final controller = TextEditingController(text: _partnerName ?? '');
-    final result = await showDialog<String?>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text(
-            _partnerName == null ? 'Add a companion' : 'Edit companion',
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Their name',
-              hintText: 'Who are you collecting places with?',
-            ),
-          ),
-          actions: [
-            if (_partnerName != null)
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, ''),
-                child: const Text('Remove'),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-    if (result == null) return;
-    await _savePartner(result.isEmpty ? null : result);
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -543,41 +471,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: Colors.white.withValues(alpha: 0.8),
-                      backgroundImage:
-                          photoUrl != null ? NetworkImage(photoUrl) : null,
-                      child:
-                          photoUrl == null
-                              ? const Icon(
-                                Icons.person_rounded,
-                                size: 30,
-                                color: AppColors.ink,
-                              )
-                              : null,
-                    ),
-                    if (_partnerName != null) ...[
-                      const SizedBox(width: 10),
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: AppColors.lavender.withValues(
-                          alpha: 0.7,
-                        ),
-                        child: Text(
-                          _partnerName!.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Colors.white.withValues(alpha: 0.8),
+                  backgroundImage:
+                      photoUrl != null ? NetworkImage(photoUrl) : null,
+                  child:
+                      photoUrl == null
+                          ? const Icon(
+                            Icons.person_rounded,
+                            size: 30,
                             color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                          )
+                          : null,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -599,55 +505,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          SoftTile(
-            onTap: _editPartner,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.peach.withValues(alpha: 0.7),
-                  child: Icon(
-                    _partnerName == null
-                        ? Icons.person_add_alt_1_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 18,
-                    color: AppColors.inkDeep,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _partnerName == null
-                            ? 'Add a companion'
-                            : _partnerName!,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _partnerName == null
-                            ? 'Collect places together'
-                            : 'Traveling with you',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
               ],
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:away/data/preview_content.dart';
+import 'package:away/services/trip_service.dart';
 import 'package:away/theme/app_colors.dart';
 import 'package:away/widgets/soft_tile.dart';
 import 'plan_chat_screen.dart';
@@ -10,135 +11,145 @@ class CalendarScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 128),
-        children: [
-          SectionHeader(
-            title: 'Plans',
-            subtitle: 'See the year, then fill a trip',
-            trailing: GlassPill(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PlanChatScreen()),
-                );
-              },
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 16,
-                    color: AppColors.inkDeep,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Plan with AI',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Row(
-              children: [
-                _YearChip(label: '2026', selected: true),
-                const SizedBox(width: 8),
-                const _YearChip(label: '2027', selected: false),
-                const Spacer(),
-                Text(
-                  '${PreviewContent.trips.length} trips',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: PreviewContent.trips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final trip = PreviewContent.trips[index];
-                return GestureDetector(
+    return ListenableBuilder(
+      listenable: TripService.instance,
+      builder: (context, _) {
+        final trips = TripService.instance.trips;
+        return SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 128),
+            children: [
+              SectionHeader(
+                title: 'Plans',
+                subtitle: 'See the year, then fill a trip',
+                trailing: GlassPill(
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => TripDetailScreen(trip: trip),
-                      ),
+                      MaterialPageRoute(builder: (_) => const PlanChatScreen()),
                     );
                   },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: trip.color.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.hairline),
-                    ),
-                    child: Text(
-                      '${trip.place}  ${_shortRange(trip)}',
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 16,
+                        color: AppColors.inkDeep,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Plan with AI',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Row(
+                  children: [
+                    _YearChip(label: '2026', selected: true),
+                    const SizedBox(width: 8),
+                    const _YearChip(label: '2027', selected: false),
+                    const Spacer(),
+                    Text(
+                      '${trips.length} ${trips.length == 1 ? 'trip' : 'trips'}',
                       style: const TextStyle(
+                        color: AppColors.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 12,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.86,
+                  ],
+                ),
               ),
-              itemBuilder: (context, index) {
-                final month = index + 1;
-                return _MiniMonthCard(
-                  year: 2026,
-                  month: month,
-                  trips: PreviewContent.trips,
-                  onTripTap: (trip) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TripDetailScreen(trip: trip),
-                      ),
+              if (trips.isNotEmpty)
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: trips.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final trip = trips[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TripDetailScreen(trip: trip),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: trip.color.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.hairline),
+                          ),
+                          child: Text(
+                            '${trip.place}  ${_shortRange(trip)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 12,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 0.86,
+                  ),
+                  itemBuilder: (context, index) {
+                    final month = index + 1;
+                    return _MiniMonthCard(
+                      year: 2026,
+                      month: month,
+                      trips: trips,
+                      onTripTap: (trip) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TripDetailScreen(trip: trip),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
