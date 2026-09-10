@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:away/services/import_service.dart';
 import 'package:away/theme/app_colors.dart';
+import 'package:away/views/imported/import_post_screen.dart';
 import 'package:away/widgets/soft_tile.dart';
 import 'dart:ui' as ui;
 
@@ -20,7 +21,6 @@ class MapScreen extends StatefulWidget {
 
 // --------------------------------MAP SETTINGS-------------------------------
 class _MapScreenState extends State<MapScreen> {
-  bool _isExpanded = false;
   GoogleMapController? mapController;
   final LatLng _center = const LatLng(45.521563, -122.677433);
   final String _mapStyle = '''
@@ -195,6 +195,15 @@ class _MapScreenState extends State<MapScreen> {
   final Map<String, double> _countryColorMap = {};
   final Map<double, BitmapDescriptor> _iconCache = {};
   Set<Marker> _markers = {};
+  List<Map<String, dynamic>> _pins = [];
+  List<Map<String, dynamic>> _swipePins = [];
+  Map<String, dynamic>? _selectedPin;
+  PageController? _pageController;
+  bool _syncingPage = false;
+
+  PageController _ensurePageController() {
+    return _pageController ??= PageController(viewportFraction: 0.92);
+  }
 
   @override
   void initState() {
@@ -205,6 +214,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _pageController?.dispose();
     ImportService.instance.removeListener(_onImportsChanged);
     super.dispose();
   }
@@ -216,6 +226,101 @@ class _MapScreenState extends State<MapScreen> {
   Color _colorFromHue(double hue) {
     final hsv = HSVColor.fromAHSV(1.0, hue, 0.65, 0.95);
     return hsv.toColor();
+  }
+
+  String _countryForLoc(Map<String, dynamic> loc) {
+    final country = (loc['country'] as String? ?? '').trim();
+    if (country.isNotEmpty) return country;
+    return _countryFromAddress(loc['address'] as String? ?? '');
+  }
+
+  double _hueForCountry(String country) {
+    return _countryColorMap.putIfAbsent(
+      country,
+      () => countryHues[country.hashCode.abs() % countryHues.length],
+    );
+  }
+
+  bool _isSamePin(Map<String, dynamic> a, Map<String, dynamic> b) {
+    return a['name'] == b['name'] && a['lat'] == b['lat'] && a['lng'] == b['lng'];
+  }
+
+  double _distanceSq(LatLng a, LatLng b) {
+    final dLat = a.latitude - b.latitude;
+    final dLng = a.longitude - b.longitude;
+    return dLat * dLat + dLng * dLng;
+  }
+
+  List<Map<String, dynamic>> _pinsByDistanceFrom(Map<String, dynamic> originLoc) {
+    final origin = _latLngFromLoc(originLoc);
+    final ordered = <Map<String, dynamic>>[];
+    for (final pin in _pins) {
+      if (_latLngFromLoc(pin) != null) {
+        ordered.add(Map<String, dynamic>.from(pin));
+      }
+    }
+    if (origin == null) return ordered;
+    ordered.sort((a, b) {
+      final aOrigin = _isSamePin(a, originLoc);
+      final bOrigin = _isSamePin(b, originLoc);
+      if (aOrigin && !bOrigin) return -1;
+      if (bOrigin && !aOrigin) return 1;
+      return _distanceSq(origin, _latLngFromLoc(a)!).compareTo(
+        _distanceSq(origin, _latLngFromLoc(b)!),
+      );
+    });
+    return ordered;
+  }
+
+  void _openPin(Map<String, dynamic> loc, {bool zoomIn = true}) {
+    final latLng = _latLngFromLoc(loc);
+    if (latLng == null) return;
+    _syncingPage = true;
+    setState(() {
+      _selectedPin = Map<String, dynamic>.from(loc);
+      _swipePins = _pinsByDistanceFrom(loc);
+    });
+    mapController?.animateCamera(
+      zoomIn
+          ? CameraUpdate.newLatLngZoom(latLng, _zoomOnFocus)
+          : CameraUpdate.newLatLng(latLng),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = _pageController;
+      if (controller != null && controller.hasClients) {
+        controller.jumpToPage(0);
+      }
+      _syncingPage = false;
+    });
+  }
+
+  void _onSwipePage(int index) {
+    if (_syncingPage) return;
+    if (index < 0 || index >= _swipePins.length) return;
+    final pin = _swipePins[index];
+    if (_selectedPin != null && _isSamePin(pin, _selectedPin!)) return;
+    setState(() => _selectedPin = Map<String, dynamic>.from(pin));
+    final latLng = _latLngFromLoc(pin);
+    if (latLng != null) {
+      mapController?.animateCamera(CameraUpdate.newLatLng(latLng));
+    }
+  }
+
+  LatLng? _latLngFromLoc(Map<String, dynamic> loc) {
+    try {
+      final lat =
+          loc['lat'] is double
+              ? loc['lat'] as double
+              : (loc['lat'] as num).toDouble();
+      final lng =
+          loc['lng'] is double
+              ? loc['lng'] as double
+              : (loc['lng'] as num).toDouble();
+      if (lat == 0.0 && lng == 0.0) return null;
+      return LatLng(lat, lng);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<BitmapDescriptor> _createCircleMarkerIcon(
@@ -289,13 +394,8 @@ class _MapScreenState extends State<MapScreen> {
         continue;
       }
       if (lat == 0.0 && lng == 0.0) continue;
-      final address = l['address'] as String? ?? 'No address available';
-      final country = _countryFromAddress(address);
-      _countryColorMap.putIfAbsent(
-        country,
-        () => countryHues[_countryColorMap.length % countryHues.length],
-      );
-      final hue = _countryColorMap[country]!;
+      final country = _countryForLoc(l);
+      final hue = _hueForCountry(country);
       BitmapDescriptor icon;
       if (_iconCache.containsKey(hue)) {
         icon = _iconCache[hue]!;
@@ -303,23 +403,34 @@ class _MapScreenState extends State<MapScreen> {
         icon = await _createCircleMarkerIcon(_colorFromHue(hue));
         _iconCache[hue] = icon;
       }
+      final loc = Map<String, dynamic>.from(l);
       temp.add(
         Marker(
-          markerId: MarkerId(name),
+          markerId: MarkerId('${name}_${lat}_$lng'),
           position: LatLng(lat, lng),
-          infoWindow: InfoWindow(title: name, snippet: address),
+          infoWindow: InfoWindow.noText,
+          consumeTapEvents: true,
           icon: icon,
-          onTap: () {
-            mapController?.animateCamera(
-              CameraUpdate.newLatLngZoom(LatLng(lat, lng), _zoomOnFocus),
-            );
-          },
+          onTap: () => _openPin(loc),
         ),
       );
     }
     if (mounted) {
       setState(() {
         _markers = temp.toSet();
+        _pins = [
+          for (final l in locs)
+            if (_latLngFromLoc(l) != null) Map<String, dynamic>.from(l),
+        ];
+        if (_selectedPin != null) {
+          final stillThere = _pins.any((loc) => _isSamePin(loc, _selectedPin!));
+          if (!stillThere) {
+            _selectedPin = null;
+            _swipePins = [];
+          } else {
+            _swipePins = _pinsByDistanceFrom(_selectedPin!);
+          }
+        }
       });
     }
     // Animate to latest marker once ready
@@ -328,121 +439,6 @@ class _MapScreenState extends State<MapScreen> {
         CameraUpdate.newLatLngZoom(temp.last.position, _zoomOnFocus),
       );
     }
-  }
-
-  Future<void> _showPinsSheet(
-    Set<Marker> markers,
-    Map<String, double> countryColorMap,
-  ) async {
-    setState(() => _isExpanded = true);
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      barrierColor: Colors.black.withValues(alpha: 0.12),
-      backgroundColor: Colors.white.withValues(alpha: 0.94),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        // Group markers by country
-        final grouped = <String, List<Marker>>{};
-        for (var m in markers) {
-          final country =
-              m.infoWindow.snippet?.split(',').last.trim() ?? 'Unknown';
-          grouped.putIfAbsent(country, () => []).add(m);
-        }
-
-        return DraggableScrollableSheet(
-          initialChildSize: 0.35,
-          minChildSize: 0.2,
-          maxChildSize: 0.9,
-          expand: false,
-          builder:
-              (ctx, scrollController) => Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: const [
-                        Text(
-                          'Your Locations',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF062D40),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      children:
-                          grouped.entries.map((entry) {
-                            final country = entry.key;
-                            final hue = countryColorMap[country] ?? 200;
-                            final color = _colorFromHue(hue);
-                            return ExpansionTile(
-                              tilePadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              leading: Container(
-                                width: 14,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(7),
-                                ),
-                              ),
-                              title: Text(
-                                country,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF062D40),
-                                ),
-                              ),
-                              children:
-                                  entry.value.map((marker) {
-                                    return ListTile(
-                                      dense: true,
-                                      visualDensity: VisualDensity.compact,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 4,
-                                          ),
-                                      title: Text(
-                                        marker.markerId.value,
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                      onTap: () {
-                                        Navigator.of(ctx).maybePop();
-                                        mapController?.animateCamera(
-                                          CameraUpdate.newLatLngZoom(
-                                            marker.position,
-                                            _zoomOnFocus,
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  }).toList(),
-                            );
-                          }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-        );
-      },
-    );
-    if (mounted) setState(() => _isExpanded = false);
   }
 
   void _onMapCreated(
@@ -497,7 +493,14 @@ class _MapScreenState extends State<MapScreen> {
         zoomControlsEnabled: false,
         zoomGesturesEnabled: true,
         myLocationButtonEnabled: false,
-        // style: _mapStyle,
+        onTap: (_) {
+          if (_selectedPin != null) {
+            setState(() {
+              _selectedPin = null;
+              _swipePins = [];
+            });
+          }
+        },
         onCameraMove: (position) {
           _lastMapPosition = position.target;
           _currentZoom = position.zoom;
@@ -510,42 +513,16 @@ class _MapScreenState extends State<MapScreen> {
     }
     print("📦 Returning Scaffold with map");
     final overlayTop = MediaQuery.of(context).padding.top + 8;
+    final overlayBottom =
+        (showDoneButton || showBackToImportButton)
+            ? MediaQuery.of(context).padding.bottom + 96
+            : MediaQuery.of(context).padding.bottom + 118;
     return Scaffold(
       body: Stack(
         children: [
           mapBody,
           Positioned(
             top: overlayTop,
-            left: 16,
-            child: GlassPill(
-              onTap: () {
-                _showPinsSheet(_markers, _countryColorMap);
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _isExpanded
-                        ? Icons.map_outlined
-                        : Icons.location_on_outlined,
-                    size: 18,
-                    color: AppColors.inkDeep,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isExpanded ? 'Hide pins' : 'Show pins',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: overlayTop + 48,
             right: 12,
             child: Column(
               children: [
@@ -629,46 +606,206 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (_selectedPin != null && _swipePins.isNotEmpty)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: overlayBottom,
+              child: SizedBox(
+                height: 52,
+                child: PageView.builder(
+                  controller: _ensurePageController(),
+                  physics:
+                      _swipePins.length > 1
+                          ? const PageScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          )
+                          : const NeverScrollableScrollPhysics(),
+                  clipBehavior: Clip.none,
+                  itemCount: _swipePins.length,
+                  onPageChanged: _onSwipePage,
+                  itemBuilder: (context, index) {
+                    final pin = _swipePins[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: _MapPinPopup(
+                        pin: pin,
+                        onClose: () {
+                          setState(() {
+                            _selectedPin = null;
+                            _swipePins = [];
+                          });
+                        },
+                        onOpen: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ImportPostScreen(pin: pin),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildGroupedMarkerList(Set<Marker> markers) {
-    final grouped = <String, List<Marker>>{};
-    for (var marker in markers) {
-      final country =
-          marker.infoWindow.snippet?.split(',').last.trim() ?? 'Unknown';
-      grouped.putIfAbsent(country, () => []).add(marker);
-    }
-    return grouped.entries.map((entry) {
-      return ExpansionTile(
-        title: Text(
-          entry.key,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+}
+
+class _MapPinPopup extends StatelessWidget {
+  final Map<String, dynamic> pin;
+  final VoidCallback onClose;
+  final VoidCallback onOpen;
+
+  const _MapPinPopup({
+    required this.pin,
+    required this.onClose,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = pin['name'] as String? ?? 'Unknown';
+    final address = pin['address'] as String? ?? '';
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.hairline),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        children:
-            entry.value.map((marker) {
-              return ListTile(
-                dense: true,
-                visualDensity: VisualDensity.compact,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 2,
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: onOpen,
+                borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    _PinThumb(
+                      pin: pin,
+                      gradientIndex: name.hashCode,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                              height: 1.15,
+                            ),
+                          ),
+                          if (address.isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Text(
+                              address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(
-                  marker.markerId.value,
-                  style: const TextStyle(fontSize: 13),
+              ),
+            ),
+            InkWell(
+              onTap: onClose,
+              borderRadius: BorderRadius.circular(999),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 14,
+                  color: AppColors.muted,
                 ),
-                onTap: () {
-                  mapController?.animateCamera(
-                    CameraUpdate.newLatLng(marker.position),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PinThumb extends StatelessWidget {
+  final Map<String, dynamic> pin;
+  final int gradientIndex;
+  final double size;
+
+  const _PinThumb({
+    required this.pin,
+    required this.gradientIndex,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbUrl = (pin['thumbnailUrl'] as String? ?? '').trim();
+    final hasThumb =
+        thumbUrl.startsWith('http://') || thumbUrl.startsWith('https://');
+    final fallback =
+        AppColors.pinFallbackGradients[gradientIndex.abs() %
+            AppColors.pinFallbackGradients.length];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasThumb)
+              Image.network(
+                thumbUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) {
+                  return DecoratedBox(
+                    decoration: BoxDecoration(gradient: fallback),
                   );
                 },
-              );
-            }).toList(),
-      );
-    }).toList();
+              )
+            else
+              DecoratedBox(decoration: BoxDecoration(gradient: fallback)),
+            if (!hasThumb)
+              Icon(
+                Icons.place_rounded,
+                color: Colors.white.withValues(alpha: 0.82),
+                size: size * 0.36,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
